@@ -1,0 +1,33 @@
+{
+  "name": "teamboard",
+  "private": true,
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:int": "turbo run test:int",
+    "e2e": "turbo run e2e",
+    "check": "turbo run lint typecheck test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:migrate": "pnpm --filter @teamboard/api db:migrate",
+    "db:seed": "pnpm --filter @teamboard/api db:seed",
+    "db:studio": "pnpm --filter @teamboard/api db:studio",
+    "db:reset": "pnpm --filter @teamboard/api db:reset"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
+    "turbo": "^2.11.11",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.2"
+  }
+}

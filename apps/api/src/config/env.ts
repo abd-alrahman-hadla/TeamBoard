@@ -1,0 +1,40 @@
+import { Inject } from '@nestjs/common';
+import { z } from 'zod';
+
+export const APP_CONFIG = Symbol('APP_CONFIG');
+
+const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const;
+
+export const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: z.coerce.number().int().positive().default(4000),
+  LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
+  DATABASE_URL: z.url(),
+  WEB_ORIGIN: z.url(),
+  JWT_ACCESS_SECRET: z.string().min(32, { error: 'JWT_ACCESS_SECRET must be at least 32 characters' }),
+  ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(7),
+  COOKIE_SECURE: z.stringbool().default(false),
+  COOKIE_DOMAIN: z.string().min(1).optional(),
+  AUTH_RATE_LIMIT: z.coerce.number().int().positive().default(10),
+  SWAGGER_ENABLED: z.stringbool().default(true),
+});
+
+export type Env = z.infer<typeof envSchema>;
+export type RawEnv = Record<string, string | undefined>;
+
+/** Empty strings in .env files mean "not set". */
+function dropEmpty(raw: RawEnv): RawEnv {
+  return Object.fromEntries(Object.entries(raw).filter(([, value]) => value !== undefined && value !== ''));
+}
+
+export function parseEnv(raw: RawEnv): Env {
+  const result = envSchema.safeParse(dropEmpty(raw));
+  if (!result.success) {
+    throw new Error(`Invalid environment configuration:\n${z.prettifyError(result.error)}`);
+  }
+  return result.data;
+}
+
+/** Parameter decorator: `constructor(@InjectEnv() private readonly env: Env)`. */
+export const InjectEnv = (): ParameterDecorator => Inject(APP_CONFIG);

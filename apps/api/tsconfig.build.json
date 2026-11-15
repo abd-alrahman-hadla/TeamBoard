@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": false,
+    "types": ["node"]
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.spec.ts", "src/**/*.int-spec.ts", "src/test-utils"]
+}

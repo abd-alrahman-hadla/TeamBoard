@@ -1,0 +1,30 @@
+node_modules/
+dist/
+.next/
+.next-e2e/
+.turbo/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# env: only the examples are committed
+.env
+.env.*
+!.env.example
+
+# generated
+apps/api/src/generated/
+
+# playwright
+playwright-report/
+test-results/
+blob-report/
+apps/web/e2e/.auth/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log

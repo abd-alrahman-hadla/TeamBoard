@@ -1,0 +1,17 @@
+packages:
+  - apps/*
+  - packages/*
+
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - argon2
+  - prisma
+
+# Install scripts we deliberately don't run (prebuilt binaries ship as optional deps).
+ignoredBuiltDependencies:
+  - '@parcel/watcher'
+  - '@scarf/scarf'
+  - esbuild
+  - sharp
+  - unrs-resolver

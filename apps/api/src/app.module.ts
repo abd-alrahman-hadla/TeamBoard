@@ -1,13 +1,19 @@
 import { type DynamicModule, Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
+import { AccessModule } from './access/access.module';
+import { ActivityModule } from './activity/activity.module';
 import { AuthModule } from './auth/auth.module';
 import { THROTTLE } from './auth/throttle';
 import { APP_CONFIG, type Env, type RawEnv } from './config/env';
 import { EnvModule } from './config/env.module';
+import { BoardsModule } from './boards/boards.module';
 import { HealthModule } from './health/health.module';
+import { InvitationsModule } from './invitations/invitations.module';
 import { loggerOptions } from './logging/logger.options';
+import { MailModule } from './mail/mail.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { WorkspacesModule } from './workspaces/workspaces.module';
 
 const ONE_MINUTE_MS = 60_000;
 
@@ -32,8 +38,14 @@ export class AppModule {
           }),
         }),
         PrismaModule,
+        MailModule,
         AuthModule,
+        AccessModule,
+        ActivityModule,
         HealthModule,
+        WorkspacesModule,
+        InvitationsModule,
+        BoardsModule,
       ],
     };
   }

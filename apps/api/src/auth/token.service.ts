@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { createHash, randomBytes } from 'node:crypto';
+import { generateOpaqueToken, hashOpaqueToken } from '../common/opaque-token';
 import { type Env, InjectEnv } from '../config/env';
 
 export interface AccessTokenPayload {
@@ -8,14 +8,8 @@ export interface AccessTokenPayload {
 }
 
 /** Refresh tokens are opaque 256-bit random values; only their SHA-256 is stored. */
-export function generateRefreshToken(): string {
-  return randomBytes(32).toString('base64url');
-}
-
-/** A fast hash is enough for 256-bit random tokens, and it allows a unique-index lookup. */
-export function hashRefreshToken(rawToken: string): string {
-  return createHash('sha256').update(rawToken).digest('hex');
-}
+export const generateRefreshToken = generateOpaqueToken;
+export const hashRefreshToken = hashOpaqueToken;
 
 function isAccessTokenPayload(value: unknown): value is AccessTokenPayload {
   return typeof value === 'object' && value !== null && 'sub' in value && typeof value.sub === 'string';

@@ -9,13 +9,18 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid(7)) @db.Uuid
-  email         String         @unique
-  name          String
-  passwordHash  String         @map("password_hash")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
-  refreshTokens RefreshToken[]
+  id              String         @id @default(uuid(7)) @db.Uuid
+  email           String         @unique
+  name            String
+  passwordHash    String         @map("password_hash")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  refreshTokens   RefreshToken[]
+  memberships     Membership[]
+  invitationsSent Invitation[]   @relation("InvitedBy")
+  cardsCreated    Card[]         @relation("CardCreatedBy")
+  comments        Comment[]
+  activities      Activity[]
 
   @@map("users")
 }
@@ -39,4 +44,157 @@ model RefreshToken {
   @@index([userId])
   @@index([familyId])
   @@map("refresh_tokens")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+
+  @@map("role")
+}
+
+model Workspace {
+  id          String       @id @default(uuid(7)) @db.Uuid
+  name        String
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  memberships Membership[]
+  invitations Invitation[]
+  boards      Board[]
+  activities  Activity[]
+
+  @@map("workspaces")
+}
+
+/// Exactly one OWNER per workspace (enforced by the service layer; ownership moves only by transfer).
+model Membership {
+  workspaceId String    @map("workspace_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  role        Role
+  createdAt   DateTime  @default(now()) @map("created_at")
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, userId])
+  @@index([userId])
+  @@map("memberships")
+}
+
+model Invitation {
+  id           String    @id @default(uuid(7)) @db.Uuid
+  workspaceId  String    @map("workspace_id") @db.Uuid
+  /// Normalised (trimmed, lower-case) like users.email.
+  email        String
+  role         Role
+  /// SHA-256 (hex) of the token in the invite link. The raw token is never stored.
+  tokenHash    String    @unique @map("token_hash")
+  invitedById  String?   @map("invited_by_id") @db.Uuid
+  expiresAt    DateTime  @map("expires_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  acceptedAt   DateTime? @map("accepted_at")
+  acceptedById String?   @map("accepted_by_id") @db.Uuid
+  revokedAt    DateTime? @map("revoked_at")
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy    User?     @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, email])
+  @@map("invitations")
+}
+
+model Board {
+  id          String     @id @default(uuid(7)) @db.Uuid
+  workspaceId String     @map("workspace_id") @db.Uuid
+  name        String
+  description String?
+  version     Int        @default(1)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  columns     Column[]
+  cards       Card[]
+  activities  Activity[]
+
+  @@index([workspaceId])
+  @@map("boards")
+}
+
+/// `position` is a fractional-indexing key. The migration gives it COLLATE "C" so Postgres sorts it byte-wise.
+model Column {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  boardId   String   @map("board_id") @db.Uuid
+  name      String
+  position  String
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards     Card[]
+
+  @@unique([boardId, position])
+  @@map("columns")
+}
+
+/// `boardId` is denormalised from the column (cards only move within their board).
+/// `position` is a fractional-indexing key with COLLATE "C" (see the migration).
+model Card {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  boardId     String    @map("board_id") @db.Uuid
+  columnId    String    @map("column_id") @db.Uuid
+  title       String
+  /// Markdown source.
+  description String?
+  labels      String[]  @default([])
+  dueDate     DateTime? @map("due_date") @db.Timestamptz(3)
+  /// Workspace members; pruned when a member is removed.
+  assigneeIds String[]  @default([]) @map("assignee_ids") @db.Uuid
+  position    String
+  version     Int       @default(1)
+  createdById String?   @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  board       Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  column      Column    @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  createdBy   User?     @relation("CardCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  comments    Comment[]
+
+  @@unique([columnId, position])
+  @@index([boardId])
+  @@map("cards")
+}
+
+model Comment {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  cardId    String   @map("card_id") @db.Uuid
+  authorId  String?  @map("author_id") @db.Uuid
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([cardId])
+  @@map("comments")
+}
+
+/// Append-only audit trail, written in the same transaction as the change it records.
+/// uuid v7 ids are time-ordered, so they double as the pagination cursor.
+model Activity {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  workspaceId String    @map("workspace_id") @db.Uuid
+  boardId     String?   @map("board_id") @db.Uuid
+  actorId     String?   @map("actor_id") @db.Uuid
+  entityType  String    @map("entity_type")
+  entityId    String    @map("entity_id") @db.Uuid
+  action      String
+  data        Json      @default("{}")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  board       Board?    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  actor       User?     @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, id])
+  @@index([boardId, id])
+  @@map("activities")
 }

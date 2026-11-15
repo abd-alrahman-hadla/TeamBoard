@@ -10,6 +10,16 @@ export const ERROR_CODES = {
   forbiddenOrigin: 'forbidden_origin',
   rateLimited: 'rate_limited',
   notFound: 'not_found',
+  forbidden: 'forbidden',
+  alreadyMember: 'already_member',
+  invitationInvalid: 'invitation_invalid',
+  invitationExpired: 'invitation_expired',
+  invitationEmailMismatch: 'invitation_email_mismatch',
+  ownerProtected: 'owner_protected',
+  roleChangeNotAllowed: 'role_change_not_allowed',
+  invalidAssignee: 'invalid_assignee',
+  invalidMove: 'invalid_move',
+  conflict: 'conflict',
   internal: 'internal_error',
 } as const;
 

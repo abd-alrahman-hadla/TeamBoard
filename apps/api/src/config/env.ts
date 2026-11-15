@@ -17,6 +17,7 @@ export const envSchema = z.object({
   COOKIE_SECURE: z.stringbool().default(false),
   COOKIE_DOMAIN: z.string().min(1).optional(),
   AUTH_RATE_LIMIT: z.coerce.number().int().positive().default(10),
+  INVITATION_TTL_HOURS: z.coerce.number().int().positive().default(48),
   SWAGGER_ENABLED: z.stringbool().default(true),
 });
 

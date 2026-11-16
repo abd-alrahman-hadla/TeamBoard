@@ -57,6 +57,8 @@ const RELATIVE = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
 /** "3 minutes ago", "yesterday", … */
 export function timeAgo(iso: string, now: Date): string {
   const seconds = Math.round((new Date(iso).getTime() - now.getTime()) / 1000);
+  // `now` is refreshed once a minute and server clocks drift, so fresh events can look slightly in the future.
+  if (seconds > -45) return 'just now';
   const abs = Math.abs(seconds);
   if (abs < 60) return RELATIVE.format(seconds, 'second');
   if (abs < 3600) return RELATIVE.format(Math.round(seconds / 60), 'minute');

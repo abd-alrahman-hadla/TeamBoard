@@ -150,7 +150,7 @@ test.describe('board', () => {
     await expect(dialog.getByTestId('comment').filter({ hasText: 'Ready for review' })).toBeVisible();
 
     await dialog.getByRole('tab', { name: 'Activity' }).click();
-    await expect(dialog.getByText(/updated the title/)).toBeVisible();
+    await expect(dialog.getByText("renamed this card from 'Beta' to 'Beta launch notes'")).toBeVisible();
     await expect(dialog.getByText(/commented/)).toBeVisible();
 
     await page.keyboard.press('Escape');

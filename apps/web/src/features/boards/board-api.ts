@@ -60,5 +60,7 @@ export const editComment = (commentId: string, body: string): Promise<Comment> =
 export const deleteComment = (commentId: string): Promise<void> =>
   apiVoid(`/comments/${commentId}`, { method: 'DELETE' });
 
+export const boardActivity = (boardId: string, cursor?: string): Promise<ActivityPage> =>
+  apiJson(`/boards/${boardId}/activity${cursor ? `?cursor=${cursor}` : ''}`, activityPageSchema);
 export const cardActivity = (cardId: string, cursor?: string): Promise<ActivityPage> =>
   apiJson(`/cards/${cardId}/activity${cursor ? `?cursor=${cursor}` : ''}`, activityPageSchema);

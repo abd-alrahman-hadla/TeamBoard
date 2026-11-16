@@ -80,6 +80,8 @@ export function useBoardRealtime(
       if (!parsed.success || parsed.data.boardId !== boardId) return;
       const event = parsed.data;
       if (event.originClientId === getClientId()) return; // our own change, already applied optimistically
+      // Every change is a new line in the board activity log (only refetched while the drawer is open).
+      void queryClient.invalidateQueries({ queryKey: queryKeys.boardActivity(boardId) });
 
       if (isBoardCacheEvent(event)) {
         queryClient.setQueryData<BoardDetail>(boardKey, (board) =>

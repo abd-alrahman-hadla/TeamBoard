@@ -53,7 +53,7 @@ export class CardsService {
       this.prisma.$transaction(async (tx) => {
         const column = await tx.column.findFirst({
           where: { id: columnId, board: { workspaceId: access.workspaceId } },
-          select: { id: true, boardId: true },
+          select: { id: true, boardId: true, name: true },
         });
         if (!column) throw notFound();
         await lockColumnForPlacement(tx, column.id);
@@ -81,7 +81,7 @@ export class CardsService {
           entityType: 'card',
           entityId: card.id,
           action: 'card.created',
-          data: { title: card.title, columnId: card.columnId },
+          data: { cardTitle: card.title, columnId: card.columnId, columnName: column.name },
         });
         return toCardDto(card);
       }),
@@ -116,7 +116,11 @@ export class CardsService {
         entityType: 'card',
         entityId: card.id,
         action: 'card.updated',
-        data: { fields: Object.keys(input) },
+        data: {
+          fields: Object.keys(input),
+          cardTitle: card.title,
+          ...(card.title !== current.title ? { previousTitle: current.title } : {}),
+        },
       });
       return toCardDto(card);
     });
@@ -136,7 +140,7 @@ export class CardsService {
         const current = await this.findScoped(tx, access, cardId);
         const target = await tx.column.findFirst({
           where: { id: input.columnId, boardId: current.boardId },
-          select: { id: true },
+          select: { id: true, name: true },
         });
         if (!target) throw notFound();
         await lockColumnForPlacement(tx, target.id);
@@ -153,7 +157,14 @@ export class CardsService {
           entityType: 'card',
           entityId: card.id,
           action: 'card.moved',
-          data: { fromColumnId: current.columnId, toColumnId: target.id, afterId: input.afterId },
+          data: {
+            cardTitle: card.title,
+            fromColumnId: current.columnId,
+            fromColumnName: current.column.name,
+            toColumnId: target.id,
+            toColumnName: target.name,
+            afterId: input.afterId,
+          },
         });
         return { card: toCardDto(card), fromColumnId: current.columnId };
       }),
@@ -173,7 +184,7 @@ export class CardsService {
         entityType: 'card',
         entityId: current.id,
         action: 'card.deleted',
-        data: { title: current.title },
+        data: { cardTitle: current.title, columnId: current.columnId },
       });
       return current;
     });
@@ -186,6 +197,7 @@ export class CardsService {
   private async findScoped(tx: Prisma.TransactionClient, access: AccessContext, cardId: string) {
     const card = await tx.card.findFirst({
       where: { id: cardId, board: { workspaceId: access.workspaceId } },
+      include: { column: { select: { name: true } } },
     });
     if (!card) throw notFound();
     return card;

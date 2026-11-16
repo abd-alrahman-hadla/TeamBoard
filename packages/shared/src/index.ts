@@ -136,3 +136,4 @@ export {
   type PresenceViewer,
   type ServerToClientEvents,
 } from './realtime';
+export { activityCardId, describeActivity, type ActivityLookup, type ActivityScope } from './activity';

@@ -4,6 +4,8 @@ export const queryKeys = {
   members: (workspaceId: string) => ['workspace', workspaceId, 'members'] as const,
   boards: (workspaceId: string) => ['workspace', workspaceId, 'boards'] as const,
   board: (boardId: string) => ['board', boardId] as const,
+  /** Under the board key, so invalidating the board also refreshes its activity. */
+  boardActivity: (boardId: string) => ['board', boardId, 'activity'] as const,
   comments: (cardId: string) => ['card', cardId, 'comments'] as const,
   cardActivity: (cardId: string) => ['card', cardId, 'activity'] as const,
 };

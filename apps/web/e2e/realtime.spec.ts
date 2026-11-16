@@ -123,6 +123,27 @@ test.describe('realtime collaboration', () => {
     ).toBeVisible();
   });
 
+  test('the activity log reads like a sentence and updates live', async ({ browser }) => {
+    const world = await setupBoard();
+    const owner = await pageFor(browser, world, world.owner);
+    const member = await pageFor(browser, world, world.member);
+
+    await member.getByRole('button', { name: 'Activity' }).click();
+    const feed = member.getByRole('dialog', { name: 'Activity' });
+    await expect(feed.getByTestId('board-activity-entry').first()).toBeVisible();
+
+    await dragTo(owner, card(owner, 'Beta'), column(owner, 'Done'));
+    await expect(feed.getByTestId('board-activity-entry').first().getByRole('button')).toHaveText(
+      `${world.owner.name} moved 'Beta' from To do to Done`,
+    );
+    await expect(feed.getByTestId('board-activity-entry').first()).toContainText('just now');
+    await expect(feed.getByRole('heading', { name: 'Today' })).toBeVisible();
+
+    // Clicking an entry opens the card.
+    await feed.getByRole('button', { name: /moved 'Beta'/ }).click();
+    await expect(member).toHaveURL(new RegExp(`card=${world.cards.beta}`));
+  });
+
   test('viewers get live updates too', async ({ browser }) => {
     const world = await setupBoard();
     const viewer = await pageFor(browser, world, world.viewer);

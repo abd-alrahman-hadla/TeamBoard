@@ -48,7 +48,7 @@ export class CommentsService {
         entityType: 'comment',
         entityId: comment.id,
         action: 'comment.created',
-        data: { cardId: card.id },
+        data: { cardId: card.id, cardTitle: card.title },
       });
       return { comment: toCommentDto(comment), boardId: card.boardId };
     });
@@ -74,7 +74,7 @@ export class CommentsService {
         entityType: 'comment',
         entityId: comment.id,
         action: 'comment.updated',
-        data: { cardId: comment.cardId },
+        data: { cardId: comment.cardId, cardTitle: current.card.title },
       });
       return { comment: toCommentDto(comment), boardId: current.card.boardId };
     });
@@ -97,7 +97,7 @@ export class CommentsService {
         entityType: 'comment',
         entityId: current.id,
         action: 'comment.deleted',
-        data: { cardId: current.cardId },
+        data: { cardId: current.cardId, cardTitle: current.card.title },
       });
       return current;
     });
@@ -110,7 +110,7 @@ export class CommentsService {
   private async findCard(tx: Prisma.TransactionClient, access: AccessContext, cardId: string) {
     const card = await tx.card.findFirst({
       where: { id: cardId, board: { workspaceId: access.workspaceId } },
-      select: { id: true, boardId: true },
+      select: { id: true, boardId: true, title: true },
     });
     if (!card) throw notFound();
     return card;
@@ -119,7 +119,7 @@ export class CommentsService {
   private async findScoped(tx: Prisma.TransactionClient, access: AccessContext, commentId: string) {
     const comment = await tx.comment.findFirst({
       where: { id: commentId, card: { board: { workspaceId: access.workspaceId } } },
-      include: { card: { select: { boardId: true } } },
+      include: { card: { select: { boardId: true, title: true } } },
     });
     if (!comment) throw notFound();
     return comment;

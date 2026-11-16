@@ -81,7 +81,7 @@ export class ColumnsService {
         entityType: 'column',
         entityId: column.id,
         action: 'column.updated',
-        data: { name: column.name },
+        data: { name: column.name, ...(column.name !== current.name ? { previousName: current.name } : {}) },
       });
       return toColumnDto(column);
     });
@@ -109,7 +109,7 @@ export class ColumnsService {
           entityType: 'column',
           entityId: column.id,
           action: 'column.moved',
-          data: { afterId: input.afterId },
+          data: { name: column.name, afterId: input.afterId },
         });
         return toColumnDto(column);
       }),

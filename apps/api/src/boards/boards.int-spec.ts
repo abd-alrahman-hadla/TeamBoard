@@ -179,6 +179,28 @@ describe('workspaces, boards, cards & comments CRUD (integration)', () => {
     expect(page.items.map((a) => a.action)).toEqual(['card.moved', 'comment.created', 'card.updated']);
   });
 
+  it('stores name snapshots so the activity log stays readable after renames and deletes', async () => {
+    const owner = as(t, w.users.owner);
+    const [todo, doing] = w.columnIds;
+    await owner.post(`/cards/${w.cardIds[0]}/move`, { columnId: doing, afterId: null }).expect(200);
+    await owner.patch(`/cards/${w.cardIds[0]}`, { title: 'Login page' }).expect(200);
+    await owner.post(`/cards/${w.cardIds[0]}/comments`, { body: 'Looks good' }).expect(201);
+    await owner.patch(`/columns/${doing}`, { name: 'In progress' }).expect(200);
+    await owner.delete(`/columns/${todo}`).expect(204);
+
+    const rows = await t.prisma.activity.findMany({ where: { boardId: w.boardId }, orderBy: { id: 'asc' } });
+    const byAction = (action: string) => rows.find((r) => r.action === action)?.data;
+    expect(byAction('card.moved')).toMatchObject({
+      cardTitle: 'First',
+      fromColumnName: 'To do',
+      toColumnName: 'Doing',
+    });
+    expect(byAction('card.updated')).toMatchObject({ cardTitle: 'Login page', previousTitle: 'First' });
+    expect(byAction('comment.created')).toMatchObject({ cardTitle: 'Login page' });
+    expect(byAction('column.updated')).toMatchObject({ name: 'In progress', previousName: 'Doing' });
+    expect(byAction('column.deleted')).toMatchObject({ name: 'To do' });
+  });
+
   it('logs board deletion at workspace level', async () => {
     await as(t, w.users.admin).delete(`/boards/${w.boardId}`).expect(204);
     const res = await as(t, w.users.viewer).get(`/workspaces/${w.workspaceId}/activity`).expect(200);

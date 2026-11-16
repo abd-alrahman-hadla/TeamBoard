@@ -1,12 +1,12 @@
 'use client';
 
+import { describeActivity } from '@teamboard/shared';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cardActivity } from '../board-api';
 import { timeAgo } from '../due-date';
 import { queryKeys } from '../query-keys';
-import { describeActivity } from './describe-activity';
 
 interface ActivityPanelProps {
   cardId: string;
@@ -34,7 +34,9 @@ export function ActivityPanel({ cardId, columnName, now }: ActivityPanelProps) {
       <ol className="space-y-2" aria-label="Card history">
         {entries.map((entry) => (
           <li key={entry.id} className="flex items-baseline gap-2 text-sm" data-testid="activity-entry">
-            <span className="flex-1">{describeActivity(entry, columnName)}</span>
+            <span className="flex-1">
+              {describeActivity(entry, 'card', { columnName, cardTitle: () => undefined })}
+            </span>
             <time className="text-muted-foreground shrink-0 text-xs" dateTime={entry.createdAt}>
               {timeAgo(entry.createdAt, now)}
             </time>

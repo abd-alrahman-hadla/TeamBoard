@@ -1,4 +1,4 @@
-import { daysUntil, dueStatus, formatDue, fromDueIso, toDueIso } from './due-date';
+import { daysUntil, dueStatus, formatDue, fromDueIso, timeAgo, toDueIso } from './due-date';
 
 const now = new Date(2026, 10, 15, 10, 0); // 15 Nov 2026, 10:00 local
 
@@ -33,5 +33,20 @@ describe('due dates', () => {
     expect(formatDue(toDueIso('2026-11-15'), now)).toBe('Today');
     expect(formatDue(toDueIso('2026-11-16'), now)).toBe('Tomorrow');
     expect(formatDue(toDueIso('2026-11-14'), now)).toBe('Yesterday');
+  });
+});
+
+describe('timeAgo', () => {
+  const at = new Date(2026, 10, 16, 12, 0, 0);
+  const iso = (deltaSeconds: number) => new Date(at.getTime() + deltaSeconds * 1000).toISOString();
+
+  it('says "just now" for fresh and slightly-future timestamps', () => {
+    expect(timeAgo(iso(-10), at)).toBe('just now');
+    expect(timeAgo(iso(30), at)).toBe('just now');
+  });
+
+  it('counts minutes and hours in the past', () => {
+    expect(timeAgo(iso(-5 * 60), at)).toMatch(/5 minutes ago/);
+    expect(timeAgo(iso(-3 * 3600), at)).toMatch(/3 hours ago/);
   });
 });

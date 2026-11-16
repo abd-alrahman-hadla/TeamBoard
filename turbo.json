@@ -27,11 +27,13 @@
     },
     "test:int": {
       "dependsOn": ["^build", "generate"],
-      "cache": false
+      "cache": false,
+      "passThroughEnv": ["TEST_DATABASE_URL", "TEST_REDIS_URL"]
     },
     "e2e": {
       "dependsOn": ["^build", "@teamboard/api#build"],
-      "cache": false
+      "cache": false,
+      "passThroughEnv": ["E2E_DATABASE_URL", "CI"]
     }
   }
 }

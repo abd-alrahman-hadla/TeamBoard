@@ -1,6 +1,6 @@
 import { refreshCookieOptions, sessionHintCookieOptions } from './auth-cookies';
 
-const env = { COOKIE_SECURE: false, REFRESH_TOKEN_TTL_DAYS: 7 } as const;
+const env = { COOKIE_SECURE: false, REFRESH_TOKEN_TTL_DAYS: 7, REFRESH_COOKIE_PATH: '/auth' } as const;
 
 describe('auth cookie options', () => {
   it('scopes the refresh cookie to /auth, httpOnly, Lax, 7 days', () => {
@@ -15,6 +15,10 @@ describe('auth cookie options', () => {
 
   it('makes the session hint readable by the web app on every path', () => {
     expect(sessionHintCookieOptions(env)).toMatchObject({ httpOnly: false, path: '/', sameSite: 'lax' });
+  });
+
+  it('follows REFRESH_COOKIE_PATH when the API sits behind a path prefix', () => {
+    expect(refreshCookieOptions({ ...env, REFRESH_COOKIE_PATH: '/api/auth' }).path).toBe('/api/auth');
   });
 
   it('adds Secure and Domain when configured', () => {

@@ -17,6 +17,11 @@ export const envSchema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(7),
   COOKIE_SECURE: z.stringbool().default(false),
   COOKIE_DOMAIN: z.string().min(1).optional(),
+  /** Path the refresh cookie is scoped to. Behind a proxy that mounts the API at /api, use /api/auth. */
+  REFRESH_COOKIE_PATH: z
+    .string()
+    .regex(/^\/[\w\-/]*$/, { error: 'REFRESH_COOKIE_PATH must be an absolute path like /auth' })
+    .default('/auth'),
   AUTH_RATE_LIMIT: z.coerce.number().int().positive().default(10),
   INVITATION_TTL_HOURS: z.coerce.number().int().positive().default(48),
   /** Socket.io Redis adapter (needed for 2+ instances). Unset = single-instance in-memory adapter. */

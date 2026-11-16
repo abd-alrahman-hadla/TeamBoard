@@ -1,0 +1,99 @@
+# Production-style stack on one host: Postgres, Redis, a one-shot migration job, N API replicas,
+# the Next.js server, and nginx as the single public origin (default http://localhost:8090).
+#
+#   cp .env.prod.example .env.prod   # then set real secrets
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build --wait
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod down
+#
+# Its own project name (teamboard-prod), so `down` never touches the dev compose stack.
+# Every app image runs as a non-root user. Only nginx publishes a port.
+
+name: teamboard-prod
+
+x-database-url: &database-url postgresql://${POSTGRES_USER:-teamboard}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-teamboard}
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-teamboard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-teamboard}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    build: { context: ., dockerfile: apps/api/Dockerfile, target: migrator }
+    image: teamboard-api-migrator:prod
+    environment:
+      DATABASE_URL: *database-url
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile, target: runtime }
+    image: teamboard-api:prod
+    restart: unless-stopped
+    deploy:
+      replicas: ${API_REPLICAS:-2}
+    environment:
+      NODE_ENV: production
+      PORT: '4000'
+      LOG_LEVEL: info
+      DATABASE_URL: *database-url
+      REDIS_URL: redis://redis:6379
+      # INSTANCE_ID defaults to the container hostname, so each replica reports its own id.
+      WEB_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:8090}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # nginx mounts the API at /api, so the refresh cookie is scoped to /api/auth.
+      REFRESH_COOKIE_PATH: /api/auth
+      TRUST_PROXY: 'true'
+      AUTH_RATE_LIMIT: ${AUTH_RATE_LIMIT:-10}
+      SWAGGER_ENABLED: 'false'
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Same origin: REST through nginx at /api, Socket.io at the page's own origin.
+        NEXT_PUBLIC_API_URL: /api
+    image: teamboard-web:prod
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.29-alpine
+    restart: unless-stopped
+    ports:
+      - '${PUBLIC_PORT:-8090}:80'
+    volumes:
+      - ./docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      api: { condition: service_healthy }
+      web: { condition: service_healthy }
+
+volumes:
+  postgres-data:
+  redis-data:

@@ -1,0 +1,21 @@
+# Defaults for any build from the repo root. Each Dockerfile has its own
+# <Dockerfile>.dockerignore (BuildKit) that adds what that image doesn't need.
+.git
+.github
+**/node_modules
+**/dist
+**/.next
+**/.next-*
+**/.turbo
+**/coverage
+**/test-results
+**/playwright-report
+**/.env
+**/.env.*
+!**/.env.example
+apps/api/src/generated
+docs
+
+# The web image only needs the API's package.json (for the lockfile's workspace layout).
+apps/api/*
+!apps/api/package.json

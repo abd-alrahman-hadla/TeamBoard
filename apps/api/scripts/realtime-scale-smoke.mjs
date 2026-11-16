@@ -3,6 +3,9 @@
 //   docker compose --profile scale up -d --build --wait
 //   pnpm realtime:scale-smoke            (SCALE_URL defaults to http://localhost:8080)
 //
+// docker-compose.prod.yml mounts REST at /api and Socket.io at the origin:
+//   SCALE_URL=http://localhost:8090 SCALE_API_URL=http://localhost:8090/api pnpm realtime:scale-smoke
+//
 // Through nginx it sets up a board, opens sockets until it has one on each replica, then makes
 // writes over REST and checks that sockets on *both* replicas receive every event, whichever
 // replica handled the write. Exits non-zero on failure.
@@ -10,6 +13,8 @@ import { randomUUID } from 'node:crypto';
 import { io } from 'socket.io-client';
 
 const BASE = process.env.SCALE_URL ?? 'http://localhost:8080';
+/** REST base; defaults to SCALE_URL (the API at the root). */
+const API_BASE = process.env.SCALE_API_URL ?? BASE;
 const TIMEOUT_MS = 5000;
 
 function fail(message) {
@@ -18,7 +23,7 @@ function fail(message) {
 }
 
 async function api(method, path, token, body) {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers: {
       ...(body ? { 'Content-Type': 'application/json' } : {}),

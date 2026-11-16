@@ -2,9 +2,10 @@ import { AUTH_COOKIES } from '@teamboard/shared';
 import type { CookieOptions, Response } from 'express';
 import type { Env } from '../config/env';
 
-export const REFRESH_COOKIE_PATH = '/auth';
-
-type CookieEnv = Pick<Env, 'COOKIE_SECURE' | 'COOKIE_DOMAIN' | 'REFRESH_TOKEN_TTL_DAYS'>;
+type CookieEnv = Pick<
+  Env,
+  'COOKIE_SECURE' | 'COOKIE_DOMAIN' | 'REFRESH_TOKEN_TTL_DAYS' | 'REFRESH_COOKIE_PATH'
+>;
 
 function baseOptions(env: CookieEnv): CookieOptions {
   return {
@@ -18,7 +19,7 @@ export function refreshCookieOptions(env: CookieEnv): CookieOptions {
   return {
     ...baseOptions(env),
     httpOnly: true,
-    path: REFRESH_COOKIE_PATH,
+    path: env.REFRESH_COOKIE_PATH,
     maxAge: env.REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000,
   };
 }

@@ -3,7 +3,7 @@ import { SOCKET_EVENTS } from '@teamboard/shared';
 import { io, type Socket } from 'socket.io-client';
 import { refreshSession } from './auth/refresh';
 import { tokenStore } from './auth/token-store';
-import { env } from './env';
+import { env, socketUrl } from './env';
 
 export type BoardSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -24,13 +24,16 @@ function reauthenticate(target: BoardSocket): void {
 }
 
 function create(): BoardSocket {
-  const created: BoardSocket = io(env.NEXT_PUBLIC_API_URL, {
+  const url = socketUrl(env);
+  const options = {
     // WebSocket only: no long-polling, so no sticky sessions behind a load balancer.
     transports: ['websocket'],
     autoConnect: false,
     // Evaluated on every (re)connect, so reconnects always use the current access token.
-    auth: (cb) => cb({ token: tokenStore.get()?.value ?? '' }),
-  });
+    auth: (cb: (data: object) => void) => cb({ token: tokenStore.get()?.value ?? '' }),
+  };
+  // No URL = this page's origin (the API is mounted behind the same host, e.g. nginx in docker-compose.prod.yml).
+  const created: BoardSocket = url ? io(url, options) : io(options);
 
   created.on(SOCKET_EVENTS.expired, () => reauthenticate(created));
   created.on('connect_error', (error) => {

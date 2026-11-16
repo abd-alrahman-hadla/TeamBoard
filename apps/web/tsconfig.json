@@ -26,8 +26,7 @@
     "**/*.tsx",
     ".next-e2e/types/**/*.ts",
     ".next/types/**/*.ts",
-    "next-env.d.ts",
-    ".next-sim/types/**/*.ts"
+    "next-env.d.ts"
   ],
   "exclude": ["node_modules", ".next", ".next-e2e"]
 }

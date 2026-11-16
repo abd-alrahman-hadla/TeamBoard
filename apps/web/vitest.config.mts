@@ -10,7 +10,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'docs-gif/**/*.test.ts'],
     setupFiles: ['./src/test/setup.ts'],
     env: { NEXT_PUBLIC_API_URL: 'http://api.test' },
     restoreMocks: true,

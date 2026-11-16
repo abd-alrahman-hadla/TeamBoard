@@ -21,7 +21,9 @@
     "db:seed:demo": "pnpm --filter @teamboard/api db:seed:demo",
     "db:studio": "pnpm --filter @teamboard/api db:studio",
     "db:reset": "pnpm --filter @teamboard/api db:reset",
-    "realtime:scale-smoke": "pnpm --filter @teamboard/api realtime:scale-smoke"
+    "realtime:scale-smoke": "pnpm --filter @teamboard/api realtime:scale-smoke",
+    "docs:rbac": "pnpm --filter @teamboard/shared build && node scripts/rbac-table.mjs",
+    "docs:gif": "pnpm --filter @teamboard/shared build && pnpm --filter @teamboard/api build && pnpm --filter @teamboard/web docs:gif"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

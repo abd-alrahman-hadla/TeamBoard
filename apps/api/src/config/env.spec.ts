@@ -28,6 +28,20 @@ describe('parseEnv', () => {
     expect(env.AUTH_RATE_LIMIT).toBe(3);
   });
 
+  it('reads TRUST_PROXY as a hop count', () => {
+    expect(parseEnv(valid).TRUST_PROXY).toBe(0);
+    expect(parseEnv({ ...valid, TRUST_PROXY: 'false' }).TRUST_PROXY).toBe(0);
+    expect(parseEnv({ ...valid, TRUST_PROXY: 'true' }).TRUST_PROXY).toBe(1);
+    expect(parseEnv({ ...valid, TRUST_PROXY: '2' }).TRUST_PROXY).toBe(2);
+    expect(() => parseEnv({ ...valid, TRUST_PROXY: 'lots' })).toThrow(/TRUST_PROXY/);
+  });
+
+  it('validates REFRESH_COOKIE_PATH', () => {
+    expect(parseEnv(valid).REFRESH_COOKIE_PATH).toBe('/auth');
+    expect(parseEnv({ ...valid, REFRESH_COOKIE_PATH: '/api/auth' }).REFRESH_COOKIE_PATH).toBe('/api/auth');
+    expect(() => parseEnv({ ...valid, REFRESH_COOKIE_PATH: 'auth' })).toThrow(/absolute path/);
+  });
+
   it('treats empty strings as unset', () => {
     expect(parseEnv({ ...valid, COOKIE_DOMAIN: '' }).COOKIE_DOMAIN).toBeUndefined();
   });

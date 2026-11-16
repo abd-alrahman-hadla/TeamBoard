@@ -1,0 +1,46 @@
+# Render Blueprint for the TeamBoard API (see DEPLOY.md).
+# Render → New → Blueprint → pick this repo. Values marked `sync: false` are asked for once.
+#
+# Migrations don't run here: .github/workflows/deploy.yml applies them to Neon first, then
+# calls this service's deploy hook (so autoDeploy is off).
+services:
+  - type: web
+    name: teamboard-api
+    runtime: docker
+    # The repo root is the build context; the last stage of the Dockerfile (`runtime`) is used.
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    healthCheckPath: /health/ready
+    autoDeploy: false
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      # Neon: the pooled connection string (…-pooler…), with ?sslmode=require.
+      - key: DATABASE_URL
+        sync: false
+      # Upstash: the TLS URL, rediss://default:<password>@<host>:6379
+      - key: REDIS_URL
+        sync: false
+      # The Vercel production URL, e.g. https://teamboard.vercel.app (CORS + Origin check).
+      - key: WEB_ORIGIN
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: 'true'
+      # Browsers reach the API through the Vercel rewrite at /api, so the refresh cookie lives on
+      # the Vercel origin under /api/auth (first-party; Safari blocks third-party cookies).
+      - key: REFRESH_COOKIE_PATH
+        value: /api/auth
+      # Vercel's proxy + Render's load balancer: two hops before the API (rate limits use req.ip).
+      - key: TRUST_PROXY
+        value: '2'
+      # Public demo: many visitors share a few accounts.
+      - key: AUTH_RATE_LIMIT
+        value: '30'
+      - key: SWAGGER_ENABLED
+        value: 'false'

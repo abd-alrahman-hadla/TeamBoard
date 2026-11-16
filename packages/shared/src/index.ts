@@ -153,3 +153,4 @@ export {
   type NotificationQuery,
   type NotificationType,
 } from './notifications';
+export { DEMO_ACCOUNTS, DEMO_BOARD_ID, DEMO_PASSWORD, DEMO_WORKSPACE_ID, type DemoAccount } from './demo';

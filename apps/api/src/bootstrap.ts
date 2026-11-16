@@ -29,7 +29,7 @@ function setupSwagger(app: NestExpressApplication): void {
 export async function configureApp(app: NestExpressApplication, env: Env): Promise<void> {
   app.useLogger(app.get(Logger));
   app.disable('x-powered-by');
-  if (env.TRUST_PROXY) app.set('trust proxy', 1);
+  if (env.TRUST_PROXY > 0) app.set('trust proxy', env.TRUST_PROXY);
   app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
     res.setHeader('X-Instance-Id', env.INSTANCE_ID);
     next();

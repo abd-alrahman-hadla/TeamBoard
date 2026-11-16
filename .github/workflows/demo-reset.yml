@@ -1,0 +1,50 @@
+name: Reset public demo
+
+# Recreates the demo workspace (Sara, Omar, "Website launch" board) every night, and on demand.
+# Needs the DEMO_DATABASE_URL secret (Neon direct connection string); skips politely without it.
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: demo-reset
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
+    steps:
+      - name: Check configuration
+        id: config
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::notice::DEMO_DATABASE_URL is not set; nothing to reset."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.config.outputs.ready == 'true'
+        uses: actions/checkout@v5
+      - if: steps.config.outputs.ready == 'true'
+        uses: pnpm/action-setup@v4
+      - if: steps.config.outputs.ready == 'true'
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: pnpm
+      - if: steps.config.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile --filter . --filter "@teamboard/api..."
+      - if: steps.config.outputs.ready == 'true'
+        run: |
+          pnpm --filter @teamboard/shared build
+          pnpm --filter @teamboard/api generate
+      - if: steps.config.outputs.ready == 'true'
+        run: pnpm db:seed:demo

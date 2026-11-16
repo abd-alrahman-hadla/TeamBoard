@@ -13,6 +13,7 @@ export function middleware(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  // Everything except Next internals and files with an extension (favicon, images, ...).
-  matcher: ['/((?!_next/|.*\\..*).*)'],
+  // Everything except /api (proxied to the API by the Vercel rewrite; redirecting it would break
+  // sign-in), Next internals and files with an extension (favicon, images, ...).
+  matcher: ['/((?!api/|_next/|.*\\..*).*)'],
 };

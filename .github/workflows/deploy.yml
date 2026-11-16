@@ -1,0 +1,60 @@
+name: Deploy API
+
+# After CI passes on main: apply migrations to Neon, then trigger the Render deploy hook.
+# The web app deploys through Vercel's Git integration (see DEPLOY.md).
+# Secrets: NEON_DIRECT_URL (direct, non-pooled connection string) and RENDER_DEPLOY_HOOK_URL.
+# Without them the job only prints a notice, so forks and fresh clones stay green.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.NEON_DIRECT_URL }}
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+    steps:
+      - name: Check configuration
+        id: config
+        run: |
+          if [ -z "$DATABASE_URL" ] || [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::notice::NEON_DIRECT_URL / RENDER_DEPLOY_HOOK_URL not set; skipping deploy."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.config.outputs.ready == 'true'
+        uses: actions/checkout@v5
+        with:
+          # The commit CI just tested, not whatever main points at now.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - if: steps.config.outputs.ready == 'true'
+        uses: pnpm/action-setup@v4
+      - if: steps.config.outputs.ready == 'true'
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: pnpm
+      - if: steps.config.outputs.ready == 'true'
+        run: pnpm install --frozen-lockfile --filter . --filter "@teamboard/api..."
+      - name: Apply migrations
+        if: steps.config.outputs.ready == 'true'
+        run: pnpm --filter @teamboard/api db:deploy
+      - name: Trigger Render deploy
+        if: steps.config.outputs.ready == 'true'
+        run: curl --fail --silent --show-error -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null

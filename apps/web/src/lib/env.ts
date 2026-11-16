@@ -9,6 +9,8 @@ export const publicEnvSchema = z.object({
   NEXT_PUBLIC_API_URL: apiUrlSchema,
   /** Where the Socket.io server is. Defaults to the API origin, or this page's origin when the API URL is a path. */
   NEXT_PUBLIC_SOCKET_URL: z.url().transform(trimSlash).optional(),
+  /** Public demo: the login page offers one-click sign-in as the demo users. */
+  NEXT_PUBLIC_DEMO_MODE: z.stringbool().default(false),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
@@ -17,6 +19,7 @@ export type PublicEnv = z.infer<typeof publicEnvSchema>;
 export const env: PublicEnv = publicEnvSchema.parse({
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL || undefined,
+  NEXT_PUBLIC_DEMO_MODE: process.env.NEXT_PUBLIC_DEMO_MODE || undefined,
 });
 
 /** Socket.io URL: explicit, else the API's origin, else undefined (= connect to the page's own origin). */

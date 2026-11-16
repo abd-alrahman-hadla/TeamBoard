@@ -28,8 +28,14 @@ export const envSchema = z.object({
   REDIS_URL: z.url().optional(),
   /** Reported to clients (hello event, X-Instance-Id header) so multi-instance setups are observable. */
   INSTANCE_ID: z.string().min(1).default(hostname()),
-  /** Set behind a reverse proxy so req.ip (rate limits, logs) is the client's address. */
-  TRUST_PROXY: z.stringbool().default(false),
+  /**
+   * Proxy hops in front of the API, so req.ip (rate limits, logs) is the client's address.
+   * `false` = 0, `true` = 1 (nginx, Render), or a number (2 for Vercel rewrite → Render).
+   */
+  TRUST_PROXY: z
+    .union([z.stringbool(), z.coerce.number().int().min(0).max(5)])
+    .default(false)
+    .transform((value) => (typeof value === 'number' ? value : value ? 1 : 0)),
   SWAGGER_ENABLED: z.stringbool().default(true),
 });
 

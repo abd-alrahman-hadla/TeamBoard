@@ -38,4 +38,16 @@ export class ActivityController {
   ): Promise<ActivityPage> {
     return this.activity.list({ workspaceId: access.workspaceId, boardId }, query);
   }
+
+  @Get('cards/:cardId/activity')
+  @RequireRole('activity.read')
+  @ApiOperation({ summary: "A card's history (including its comments), newest first" })
+  @ApiZodResponse(200, activityPageSchema)
+  forCard(
+    @CurrentAccess() access: AccessContext,
+    @Param('cardId', ParseIdPipe) cardId: string,
+    @Query() query: ActivityQueryDto,
+  ): Promise<ActivityPage> {
+    return this.activity.list({ workspaceId: access.workspaceId, cardId }, query);
+  }
 }

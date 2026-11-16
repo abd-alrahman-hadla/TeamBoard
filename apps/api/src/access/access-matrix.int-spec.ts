@@ -181,6 +181,7 @@ const CASES: Case[] = [
   },
   { action: 'activity.read', method: 'get', path: (w) => `/workspaces/${w.workspaceId}/activity`, ok: 200 },
   { action: 'activity.read', method: 'get', path: (w) => `/boards/${w.boardId}/activity`, ok: 200 },
+  { action: 'activity.read', method: 'get', path: (w) => `/cards/${w.cardIds[0]}/activity`, ok: 200 },
 ];
 
 /** Outsiders always get 404 (no existence leak); members get `ok` when the matrix allows, else 403. */

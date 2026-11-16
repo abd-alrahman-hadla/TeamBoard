@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { WorkspacesPlaceholder } from '@/features/workspaces/workspaces-placeholder';
+import { WorkspaceList } from '@/features/workspaces/workspace-list';
 
 export const metadata: Metadata = { title: 'Workspaces · TeamBoard' };
 
 export default function WorkspacesPage() {
-  return <WorkspacesPlaceholder />;
+  return <WorkspaceList />;
 }

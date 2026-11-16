@@ -77,9 +77,11 @@ test.describe('auth flow', () => {
 
     // Well past the first token's expiry, authenticated calls still work.
     await page.waitForTimeout(E2E.accessTokenTtlSeconds * 1000);
-    const me = page.waitForResponse((r) => r.url().endsWith('/auth/me'));
+    const workspaces = page.waitForResponse(
+      (r) => r.url().endsWith('/workspaces') && r.request().method() === 'GET',
+    );
     await page.reload();
-    expect((await me).status()).toBe(200);
+    expect((await workspaces).status()).toBe(200);
     await expectSignedIn(page, user);
   });
 

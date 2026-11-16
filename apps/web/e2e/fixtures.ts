@@ -31,10 +31,14 @@ export async function loginViaUi(page: Page, user: Pick<TestUser, 'email' | 'pas
 }
 
 /** On /workspaces with the header showing the user and the authenticated /auth/me call succeeding. */
+/** On /workspaces with the header showing the user and the (authenticated) workspace list loaded. */
 export async function expectSignedIn(page: Page, user: Pick<TestUser, 'name' | 'email'>): Promise<void> {
   await expect(page).toHaveURL(/\/workspaces$/);
   await expect(page.getByTestId('current-user')).toHaveText(user.name);
-  await expect(page.getByTestId('me-status')).toContainText(`Signed in as ${user.email}`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Workspaces' })).toBeVisible();
+  await expect(
+    page.getByText('You’re not in any workspace yet').or(page.getByRole('heading', { level: 2 }).first()),
+  ).toBeVisible();
 }
 
 export async function refreshCookie(context: BrowserContext): Promise<string | undefined> {

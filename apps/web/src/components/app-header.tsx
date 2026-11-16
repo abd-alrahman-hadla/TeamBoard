@@ -24,7 +24,7 @@ export function AppHeader() {
 
   return (
     <header className="border-b">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
+      <div className="flex h-14 items-center justify-between px-4">
         <Link href={HOME_PATH} className="font-semibold tracking-tight">
           TeamBoard
         </Link>

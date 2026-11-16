@@ -10,7 +10,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <RequireAuth>
         <div className="flex min-h-svh flex-col">
           <AppHeader />
-          <main className="mx-auto w-full max-w-5xl flex-1 p-6">{children}</main>
+          <main className="flex-1">{children}</main>
         </div>
       </RequireAuth>
     </Suspense>

@@ -56,13 +56,17 @@ export class ActivityService {
 
   /** Newest first. uuid v7 ids are time-ordered, so `id < cursor` pages backwards in time. */
   async list(
-    scope: { workspaceId: string; boardId?: string },
+    scope: { workspaceId: string; boardId?: string; cardId?: string },
     page: { cursor?: string | undefined; limit: number },
   ): Promise<ActivityPage> {
     const rows = await this.prisma.activity.findMany({
       where: {
         workspaceId: scope.workspaceId,
         ...(scope.boardId ? { boardId: scope.boardId } : {}),
+        // A card's history: entries about the card itself, plus its comments (which carry data.cardId).
+        ...(scope.cardId
+          ? { OR: [{ entityId: scope.cardId }, { data: { path: ['cardId'], equals: scope.cardId } }] }
+          : {}),
         ...(page.cursor ? { id: { lt: page.cursor } } : {}),
       },
       include: ACTIVITY_INCLUDE,

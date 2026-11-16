@@ -165,6 +165,20 @@ describe('workspaces, boards, cards & comments CRUD (integration)', () => {
     expect(page1.items[0]?.actor).toEqual({ id: w.users.owner.id, name: w.users.owner.name });
   });
 
+  it("returns a card's history (its own changes and its comments) and nothing else", async () => {
+    const member = as(t, w.users.member);
+    const [mine, other] = w.cardIds;
+    await member.patch(`/cards/${mine}`, { title: 'Renamed' }).expect(200);
+    await member.post(`/cards/${mine}/comments`, { body: 'On mine' }).expect(201);
+    await member.post(`/cards/${mine}/move`, { columnId: w.columnIds[1], afterId: null }).expect(200);
+    await member.patch(`/cards/${other}`, { title: 'Not mine' }).expect(200);
+    await member.post(`/cards/${other}/comments`, { body: 'On other' }).expect(201);
+
+    const res = await as(t, w.users.viewer).get(`/cards/${mine}/activity`).expect(200);
+    const page = activityPageSchema.parse(res.body);
+    expect(page.items.map((a) => a.action)).toEqual(['card.moved', 'comment.created', 'card.updated']);
+  });
+
   it('logs board deletion at workspace level', async () => {
     await as(t, w.users.admin).delete(`/boards/${w.boardId}`).expect(204);
     const res = await as(t, w.users.viewer).get(`/workspaces/${w.workspaceId}/activity`).expect(200);

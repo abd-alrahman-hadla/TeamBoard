@@ -95,6 +95,7 @@ const ROUTES: Route[] = [
   },
   { method: 'delete', path: (i) => `/cards/${i.cardId}` },
   { method: 'get', path: (i) => `/cards/${i.cardId}/comments` },
+  { method: 'get', path: (i) => `/cards/${i.cardId}/activity` },
   { method: 'post', path: (i) => `/cards/${i.cardId}/comments`, body: () => ({ body: 'Planted' }) },
   { method: 'patch', path: (i) => `/comments/${i.commentId}`, body: () => ({ body: 'Hijacked' }) },
   { method: 'delete', path: (i) => `/comments/${i.commentId}` },

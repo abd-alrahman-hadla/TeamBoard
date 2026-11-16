@@ -114,3 +114,25 @@ export {
   type Role,
 } from './roles';
 export { comparePositions, positionBetween } from './ordering';
+export {
+  BOARD_EVENT_TYPES,
+  CLIENT_ID_HEADER,
+  SOCKET_EVENTS,
+  boardEventSchema,
+  boardRoom,
+  clientIdSchema,
+  editingSchema,
+  joinBoardSchema,
+  presenceSchema,
+  presenceViewerSchema,
+  userRoom,
+  type BoardEvent,
+  type BoardEventOf,
+  type BoardEventType,
+  type ClientToServerEvents,
+  type HelloPayload,
+  type JoinBoardAck,
+  type Presence,
+  type PresenceViewer,
+  type ServerToClientEvents,
+} from './realtime';

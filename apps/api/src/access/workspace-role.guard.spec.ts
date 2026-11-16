@@ -19,8 +19,11 @@ function setup(options: { action: Action; role: Role | null; owner?: string | nu
   return { guard: new WorkspaceRoleGuard(reflector, resolver), workspaceOf, roleOf };
 }
 
-function contextFor(params: Record<string, string>): { context: ExecutionContext; request: AccessRequest } {
-  const request = { params, auth: { userId: USER } } as unknown as AccessRequest;
+function contextFor(
+  params: Record<string, string>,
+  headers: Record<string, string> = { 'x-client-id': 'tab-1' },
+): { context: ExecutionContext; request: AccessRequest } {
+  const request = { params, headers, auth: { userId: USER } } as unknown as AccessRequest;
   const context = {
     getHandler: () => undefined,
     getClass: () => undefined,
@@ -46,7 +49,21 @@ describe('WorkspaceRoleGuard', () => {
     const { context, request } = contextFor({ cardId });
     await expect(guard.canActivate(context)).resolves.toBe(true);
     expect(workspaceOf).toHaveBeenCalledWith('cardId', cardId);
-    expect(request.access).toEqual({ userId: USER, workspaceId: WORKSPACE, role: 'MEMBER' });
+    expect(request.access).toEqual({
+      userId: USER,
+      workspaceId: WORKSPACE,
+      role: 'MEMBER',
+      clientId: 'tab-1',
+    });
+  });
+
+  it('records a null client id when the header is missing or malformed', async () => {
+    for (const headers of [{}, { 'x-client-id': '<script>' }]) {
+      const { guard } = setup({ action: 'card.read', role: 'VIEWER' });
+      const { context, request } = contextFor({ cardId: randomUUID() }, headers);
+      await guard.canActivate(context);
+      expect(request.access?.clientId).toBeNull();
+    }
   });
 
   it('403s a member whose role is too low', async () => {

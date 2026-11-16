@@ -1,4 +1,5 @@
 import { Inject } from '@nestjs/common';
+import { hostname } from 'node:os';
 import { z } from 'zod';
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -18,6 +19,12 @@ export const envSchema = z.object({
   COOKIE_DOMAIN: z.string().min(1).optional(),
   AUTH_RATE_LIMIT: z.coerce.number().int().positive().default(10),
   INVITATION_TTL_HOURS: z.coerce.number().int().positive().default(48),
+  /** Socket.io Redis adapter (needed for 2+ instances). Unset = single-instance in-memory adapter. */
+  REDIS_URL: z.url().optional(),
+  /** Reported to clients (hello event, X-Instance-Id header) so multi-instance setups are observable. */
+  INSTANCE_ID: z.string().min(1).default(hostname()),
+  /** Set behind a reverse proxy so req.ip (rate limits, logs) is the client's address. */
+  TRUST_PROXY: z.stringbool().default(false),
   SWAGGER_ENABLED: z.stringbool().default(true),
 });
 

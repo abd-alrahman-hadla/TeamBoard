@@ -11,6 +11,7 @@ import { ActivityService } from '../activity/activity.service';
 import { forbidden, notFound } from '../common/errors';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { BoardEventsService } from '../realtime/board-events.service';
 import { toCommentDto } from './board.mappers';
 
 const COMMENT_INCLUDE = { author: { select: { id: true, name: true } } } as const;
@@ -20,6 +21,7 @@ export class CommentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
+    private readonly events: BoardEventsService,
   ) {}
 
   async list(access: AccessContext, cardId: string): Promise<Comment[]> {
@@ -32,8 +34,8 @@ export class CommentsService {
     return rows.map(toCommentDto);
   }
 
-  create(access: AccessContext, cardId: string, input: CreateCommentInput): Promise<Comment> {
-    return this.prisma.$transaction(async (tx) => {
+  async create(access: AccessContext, cardId: string, input: CreateCommentInput): Promise<Comment> {
+    const { comment, boardId } = await this.prisma.$transaction(async (tx) => {
       const card = await this.findCard(tx, access, cardId);
       const comment = await tx.comment.create({
         data: { cardId: card.id, authorId: access.userId, body: input.body },
@@ -48,13 +50,15 @@ export class CommentsService {
         action: 'comment.created',
         data: { cardId: card.id },
       });
-      return toCommentDto(comment);
+      return { comment: toCommentDto(comment), boardId: card.boardId };
     });
+    this.events.publish(boardId, access, { type: 'comment.created', payload: { comment } });
+    return comment;
   }
 
   /** Only the author edits. */
-  update(access: AccessContext, commentId: string, input: UpdateCommentInput): Promise<Comment> {
-    return this.prisma.$transaction(async (tx) => {
+  async update(access: AccessContext, commentId: string, input: UpdateCommentInput): Promise<Comment> {
+    const { comment, boardId } = await this.prisma.$transaction(async (tx) => {
       const current = await this.findScoped(tx, access, commentId);
       if (!canEditComment(access.userId, current.authorId))
         throw forbidden('Only the author can edit a comment');
@@ -72,13 +76,15 @@ export class CommentsService {
         action: 'comment.updated',
         data: { cardId: comment.cardId },
       });
-      return toCommentDto(comment);
+      return { comment: toCommentDto(comment), boardId: current.card.boardId };
     });
+    this.events.publish(boardId, access, { type: 'comment.updated', payload: { comment } });
+    return comment;
   }
 
   /** The author, or an admin+, deletes. */
-  delete(access: AccessContext, commentId: string): Promise<void> {
-    return this.prisma.$transaction(async (tx) => {
+  async delete(access: AccessContext, commentId: string): Promise<void> {
+    const deleted = await this.prisma.$transaction(async (tx) => {
       const current = await this.findScoped(tx, access, commentId);
       if (!canDeleteComment(access.userId, access.role, current.authorId)) {
         throw forbidden('Only the author or an admin can delete a comment');
@@ -93,6 +99,11 @@ export class CommentsService {
         action: 'comment.deleted',
         data: { cardId: current.cardId },
       });
+      return current;
+    });
+    this.events.publish(deleted.card.boardId, access, {
+      type: 'comment.deleted',
+      payload: { commentId: deleted.id, cardId: deleted.cardId },
     });
   }
 

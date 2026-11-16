@@ -42,6 +42,8 @@ export default defineConfig({
         COOKIE_SECURE: 'false',
         AUTH_RATE_LIMIT: '1000',
         SWAGGER_ENABLED: 'false',
+        REDIS_URL: 'redis://localhost:6379',
+        INSTANCE_ID: 'e2e',
       },
     },
     {
@@ -54,6 +56,8 @@ export default defineConfig({
       stderr: 'pipe',
       env: {
         NEXT_PUBLIC_API_URL: E2E.apiUrl,
+        // Exposes window.__teamboardSocket for the reconnect test (see src/lib/socket.ts).
+        NEXT_PUBLIC_E2E: '1',
         NEXT_DIST_DIR: '.next-e2e',
         NEXT_TELEMETRY_DISABLED: '1',
       },

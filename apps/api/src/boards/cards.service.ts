@@ -13,6 +13,7 @@ import {
   withPositionRetry,
 } from '../ordering/placement';
 import { PrismaService } from '../prisma/prisma.service';
+import { BoardEventsService } from '../realtime/board-events.service';
 import { MembersService } from '../workspaces/members.service';
 import { toCardDto } from './board.mappers';
 
@@ -43,11 +44,12 @@ export class CardsService {
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
     private readonly members: MembersService,
+    private readonly events: BoardEventsService,
   ) {}
 
-  create(access: AccessContext, columnId: string, input: CreateCardInput): Promise<Card> {
+  async create(access: AccessContext, columnId: string, input: CreateCardInput): Promise<Card> {
     const placement = placementFrom(input.afterId);
-    return withPositionRetry(() =>
+    const card = await withPositionRetry(() =>
       this.prisma.$transaction(async (tx) => {
         const column = await tx.column.findFirst({
           where: { id: columnId, board: { workspaceId: access.workspaceId } },
@@ -84,14 +86,16 @@ export class CardsService {
         return toCardDto(card);
       }),
     );
+    this.events.publish(card.boardId, access, { type: 'card.created', payload: { card } });
+    return card;
   }
 
   async get(access: AccessContext, cardId: string): Promise<Card> {
     return toCardDto(await this.findScoped(this.prisma, access, cardId));
   }
 
-  update(access: AccessContext, cardId: string, input: UpdateCardInput): Promise<Card> {
-    return this.prisma.$transaction(async (tx) => {
+  async update(access: AccessContext, cardId: string, input: UpdateCardInput): Promise<Card> {
+    const updated = await this.prisma.$transaction(async (tx) => {
       const current = await this.findScoped(tx, access, cardId);
       if (input.assigneeIds) await this.members.assertMembers(tx, access.workspaceId, input.assigneeIds);
       const card = await tx.card.update({
@@ -116,16 +120,18 @@ export class CardsService {
       });
       return toCardDto(card);
     });
+    this.events.publish(updated.boardId, access, { type: 'card.updated', payload: { card: updated } });
+    return updated;
   }
 
   /**
    * Moves a card within its board. The target column must be on the same board and the anchor
    * in the target column; anything else is a 404. Writes only the moved card's row.
    */
-  move(access: AccessContext, cardId: string, input: MoveCardInput): Promise<Card> {
+  async move(access: AccessContext, cardId: string, input: MoveCardInput): Promise<Card> {
     const placement = placementFrom(input.afterId);
     assertNotSelfAnchor(cardId, placement);
-    return withPositionRetry(() =>
+    const { card, fromColumnId } = await withPositionRetry(() =>
       this.prisma.$transaction(async (tx) => {
         const current = await this.findScoped(tx, access, cardId);
         const target = await tx.column.findFirst({
@@ -149,13 +155,15 @@ export class CardsService {
           action: 'card.moved',
           data: { fromColumnId: current.columnId, toColumnId: target.id, afterId: input.afterId },
         });
-        return toCardDto(card);
+        return { card: toCardDto(card), fromColumnId: current.columnId };
       }),
     );
+    this.events.publish(card.boardId, access, { type: 'card.moved', payload: { card, fromColumnId } });
+    return card;
   }
 
-  delete(access: AccessContext, cardId: string): Promise<void> {
-    return this.prisma.$transaction(async (tx) => {
+  async delete(access: AccessContext, cardId: string): Promise<void> {
+    const deleted = await this.prisma.$transaction(async (tx) => {
       const current = await this.findScoped(tx, access, cardId);
       await tx.card.delete({ where: { id: current.id } });
       await this.activity.record(tx, {
@@ -167,6 +175,11 @@ export class CardsService {
         action: 'card.deleted',
         data: { title: current.title },
       });
+      return current;
+    });
+    this.events.publish(deleted.boardId, access, {
+      type: 'card.deleted',
+      payload: { cardId: deleted.id, columnId: deleted.columnId },
     });
   }
 

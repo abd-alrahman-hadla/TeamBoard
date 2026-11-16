@@ -1,0 +1,17 @@
+.git
+**/node_modules
+**/dist
+**/.next
+**/.next-*
+**/.turbo
+**/coverage
+**/test-results
+**/playwright-report
+**/.env
+**/.env.*
+!**/.env.example
+apps/api/src/generated
+
+# The API image only needs the web app's package.json (for the lockfile's workspace layout).
+apps/web/*
+!apps/web/package.json

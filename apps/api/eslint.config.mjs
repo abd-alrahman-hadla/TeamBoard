@@ -1,4 +1,5 @@
 import globals from 'globals';
+import tseslint from 'typescript-eslint';
 import { baseConfig } from '../../eslint.config.base.mjs';
 
 export default [
@@ -29,5 +30,11 @@ export default [
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/unbound-method': 'off',
     },
+  },
+  {
+    // Plain-JS dev scripts: no type information, so no type-aware rules.
+    files: ['scripts/**/*.mjs'],
+    ...tseslint.configs.disableTypeChecked,
+    languageOptions: { globals: globals.node, parserOptions: { projectService: false, project: null } },
   },
 ];

@@ -1,12 +1,13 @@
 'use client';
 
 import type { Card } from '@teamboard/shared';
-import { ChevronRightIcon, EyeIcon } from 'lucide-react';
+import { ChevronRightIcon, EyeIcon, LockIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/features/auth/auth-context';
 import { ApiError } from '@/lib/api-client';
 import { BoardProvider, useNow } from './board-context';
 import { allCards, boardLabels } from './board-cache';
@@ -16,6 +17,8 @@ import type { ColumnOrder } from './dnd/dnd-logic';
 import { filterCards } from './filters/filter-cards';
 import { FilterToolbar } from './filters/filter-toolbar';
 import { useBoardFilters } from './filters/use-board-filters';
+import { PresenceAvatars } from './realtime/presence-avatars';
+import { useBoardRealtime } from './realtime/use-board-realtime';
 import { useBoardContext, useBoardQuery } from './use-board';
 import { useBoardMutations } from './use-board-mutations';
 
@@ -37,6 +40,9 @@ export function BoardView({ boardId }: { boardId: string }) {
   const board = useBoardQuery(boardId);
   const context = useBoardContext(board.data?.workspaceId);
   const mutations = useBoardMutations(boardId);
+  const { state: auth } = useAuth();
+  const meId = auth.user?.id ?? null;
+  const realtime = useBoardRealtime(boardId, board.data?.workspaceId, board.isSuccess);
   const [filters, setFilters] = useBoardFilters();
   const now = useNow();
 
@@ -75,6 +81,19 @@ export function BoardView({ boardId }: { boardId: string }) {
     return { order, cardsById, shown: shown.size, total: cards.length };
   }, [board.data, filters, now]);
 
+  // Checked before load errors: once access is gone, any refetch 404s too.
+  if (realtime.revoked) {
+    return (
+      <div className="mx-auto max-w-md space-y-2 p-10 text-center" role="alert">
+        <LockIcon className="text-muted-foreground mx-auto size-6" aria-hidden />
+        <h1 className="text-lg font-semibold">You no longer have access to this board</h1>
+        <p className="text-muted-foreground text-sm">You were removed from its workspace.</p>
+        <Link href="/workspaces" className="text-primary text-sm underline underline-offset-4">
+          Back to your workspaces
+        </Link>
+      </div>
+    );
+  }
   if (board.isError) {
     const missing = board.error instanceof ApiError && board.error.status === 404;
     return (
@@ -102,6 +121,9 @@ export function BoardView({ boardId }: { boardId: string }) {
         mutations,
         now,
         openCard,
+        meId,
+        presence: realtime.presence,
+        setEditing: realtime.setEditing,
       }}
     >
       <div className="flex h-[calc(100svh-3.5rem)] flex-col">
@@ -120,6 +142,13 @@ export function BoardView({ boardId }: { boardId: string }) {
                 View only
               </Badge>
             )}
+            <div className="ml-auto">
+              <PresenceAvatars
+                viewers={realtime.presence?.viewers ?? []}
+                meId={meId}
+                connected={realtime.connected}
+              />
+            </div>
           </div>
           <FilterToolbar
             filters={filters}

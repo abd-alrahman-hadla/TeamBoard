@@ -13,6 +13,7 @@ import { InvitationsModule } from './invitations/invitations.module';
 import { loggerOptions } from './logging/logger.options';
 import { MailModule } from './mail/mail.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { RealtimeModule } from './realtime/realtime.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 
 const ONE_MINUTE_MS = 60_000;
@@ -42,6 +43,7 @@ export class AppModule {
         AuthModule,
         AccessModule,
         ActivityModule,
+        RealtimeModule,
         HealthModule,
         WorkspacesModule,
         InvitationsModule,

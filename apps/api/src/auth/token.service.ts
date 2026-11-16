@@ -41,12 +41,20 @@ export class TokenService {
 
   /** Returns the payload, or undefined when the token is missing, malformed, expired or forged. */
   async verifyAccessToken(token: string): Promise<AccessTokenPayload | undefined> {
+    const verified = await this.verifyWithExpiry(token);
+    return verified ? { sub: verified.sub } : undefined;
+  }
+
+  /** Like verifyAccessToken, plus when it expires (epoch ms). Sockets disconnect at that moment. */
+  async verifyWithExpiry(token: string): Promise<{ sub: string; expiresAt: number } | undefined> {
     try {
       const payload: unknown = await this.jwt.verifyAsync(token, {
         secret: this.env.JWT_ACCESS_SECRET,
         algorithms: ['HS256'],
       });
-      return isAccessTokenPayload(payload) ? { sub: payload.sub } : undefined;
+      if (!isAccessTokenPayload(payload)) return undefined;
+      const exp = (payload as { exp?: unknown }).exp;
+      return { sub: payload.sub, expiresAt: typeof exp === 'number' ? exp * 1000 : Date.now() };
     } catch {
       return undefined;
     }

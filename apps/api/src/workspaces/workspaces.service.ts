@@ -10,6 +10,7 @@ import type { AccessContext } from '../access/access.types';
 import { ActivityService } from '../activity/activity.service';
 import { badRequest, conflict, forbidden, notFound } from '../common/errors';
 import { PrismaService } from '../prisma/prisma.service';
+import { BoardEventsService } from '../realtime/board-events.service';
 import { MembersService } from './members.service';
 import { toMyWorkspaceDto, toWorkspaceDto } from './workspace.mappers';
 
@@ -19,6 +20,7 @@ export class WorkspacesService {
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
     private readonly members: MembersService,
+    private readonly events: BoardEventsService,
   ) {}
 
   /** The creator becomes the one OWNER. */
@@ -74,7 +76,12 @@ export class WorkspacesService {
 
   /** Cascades to memberships, invitations, boards, columns, cards, comments and activity. */
   async delete(access: AccessContext): Promise<void> {
+    const boards = await this.prisma.board.findMany({
+      where: { workspaceId: access.workspaceId },
+      select: { id: true },
+    });
     await this.prisma.workspace.delete({ where: { id: access.workspaceId } });
+    for (const board of boards) this.events.closeBoard(board.id, access);
   }
 
   /** The owner hands ownership to another member and becomes an admin. */
@@ -115,8 +122,8 @@ export class WorkspacesService {
     if (access.role === 'OWNER') {
       throw forbidden('Transfer ownership before leaving the workspace', ERROR_CODES.ownerProtected);
     }
-    await this.prisma.$transaction(async (tx) => {
-      await this.members.removeMembershipTx(tx, access.workspaceId, access.userId);
+    const changedBoards = await this.prisma.$transaction(async (tx) => {
+      const boards = await this.members.removeMembershipTx(tx, access.workspaceId, access.userId);
       await this.activity.record(tx, {
         workspaceId: access.workspaceId,
         actorId: access.userId,
@@ -124,6 +131,8 @@ export class WorkspacesService {
         entityId: access.userId,
         action: 'member.left',
       });
+      return boards;
     });
+    await this.members.afterMembershipRemoved(access, access.userId, changedBoards);
   }
 }

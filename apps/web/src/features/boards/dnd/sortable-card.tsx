@@ -17,7 +17,7 @@ interface SortableCardProps {
 }
 
 export function SortableCard({ card, columnId, shouldIgnoreClick }: SortableCardProps) {
-  const { permissions, memberById, now, openCard } = useBoardContextValue();
+  const { permissions, memberById, now, openCard, editorsOf } = useBoardContextValue();
   const pending = isTempId(card.id);
   const draggable = permissions.canEditCards && !pending;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -64,6 +64,7 @@ export function SortableCard({ card, columnId, shouldIgnoreClick }: SortableCard
         card={card}
         memberById={memberById}
         now={now}
+        editors={editorsOf(card.id)}
         className="hover:border-foreground/20 transition-colors"
       />
     </div>

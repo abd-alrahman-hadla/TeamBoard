@@ -4,6 +4,7 @@ import type { AccessContext } from '../access/access.types';
 import { ActivityService } from '../activity/activity.service';
 import { notFound } from '../common/errors';
 import { PrismaService } from '../prisma/prisma.service';
+import { BoardEventsService } from '../realtime/board-events.service';
 import { toBoardDetailDto, toBoardDto } from './board.mappers';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class BoardsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
+    private readonly events: BoardEventsService,
   ) {}
 
   create(access: AccessContext, input: CreateBoardInput): Promise<Board> {
@@ -54,8 +56,8 @@ export class BoardsService {
     return toBoardDetailDto(board);
   }
 
-  update(access: AccessContext, boardId: string, input: UpdateBoardInput): Promise<Board> {
-    return this.prisma.$transaction(async (tx) => {
+  async update(access: AccessContext, boardId: string, input: UpdateBoardInput): Promise<Board> {
+    const board = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.board.updateMany({
         where: { id: boardId, workspaceId: access.workspaceId },
         data: {
@@ -77,11 +79,13 @@ export class BoardsService {
       });
       return toBoardDto(board);
     });
+    this.events.publish(boardId, access, { type: 'board.updated', payload: { board } });
+    return board;
   }
 
   /** Cascades to columns, cards, comments and the board's own activity; the deletion is logged at workspace level. */
-  delete(access: AccessContext, boardId: string): Promise<void> {
-    return this.prisma.$transaction(async (tx) => {
+  async delete(access: AccessContext, boardId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
       const board = await tx.board.findFirst({ where: { id: boardId, workspaceId: access.workspaceId } });
       if (!board) throw notFound();
       await tx.board.delete({ where: { id: boardId } });
@@ -94,5 +98,6 @@ export class BoardsService {
         data: { name: board.name },
       });
     });
+    this.events.closeBoard(boardId, access);
   }
 }

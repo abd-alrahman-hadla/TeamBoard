@@ -14,6 +14,7 @@ import {
   withPositionRetry,
 } from '../ordering/placement';
 import { PrismaService } from '../prisma/prisma.service';
+import { BoardEventsService } from '../realtime/board-events.service';
 import { toColumnDto } from './board.mappers';
 
 const POSITION = { position: true } as const;
@@ -38,11 +39,12 @@ export class ColumnsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
+    private readonly events: BoardEventsService,
   ) {}
 
-  create(access: AccessContext, boardId: string, input: CreateColumnInput): Promise<Column> {
+  async create(access: AccessContext, boardId: string, input: CreateColumnInput): Promise<Column> {
     const placement = placementFrom(input.afterId);
-    return withPositionRetry(() =>
+    const column = await withPositionRetry(() =>
       this.prisma.$transaction(async (tx) => {
         const board = await tx.board.findFirst({ where: { id: boardId, workspaceId: access.workspaceId } });
         if (!board) throw notFound();
@@ -61,10 +63,12 @@ export class ColumnsService {
         return toColumnDto(column);
       }),
     );
+    this.events.publish(boardId, access, { type: 'column.created', payload: { column } });
+    return column;
   }
 
-  update(access: AccessContext, columnId: string, input: UpdateColumnInput): Promise<Column> {
-    return this.prisma.$transaction(async (tx) => {
+  async update(access: AccessContext, columnId: string, input: UpdateColumnInput): Promise<Column> {
+    const updated = await this.prisma.$transaction(async (tx) => {
       const current = await this.findScoped(tx, access, columnId);
       const column = await tx.column.update({
         where: { id: current.id },
@@ -81,13 +85,15 @@ export class ColumnsService {
       });
       return toColumnDto(column);
     });
+    this.events.publish(updated.boardId, access, { type: 'column.updated', payload: { column: updated } });
+    return updated;
   }
 
   /** Writes only the moved column's row (new fractional key + version). */
-  move(access: AccessContext, columnId: string, input: MoveColumnInput): Promise<Column> {
+  async move(access: AccessContext, columnId: string, input: MoveColumnInput): Promise<Column> {
     const placement: Placement = placementFrom(input.afterId);
     assertNotSelfAnchor(columnId, placement);
-    return withPositionRetry(() =>
+    const column = await withPositionRetry(() =>
       this.prisma.$transaction(async (tx) => {
         const current = await this.findScoped(tx, access, columnId);
         await lockBoardForPlacement(tx, current.boardId);
@@ -108,11 +114,13 @@ export class ColumnsService {
         return toColumnDto(column);
       }),
     );
+    this.events.publish(column.boardId, access, { type: 'column.moved', payload: { column } });
+    return column;
   }
 
   /** Cascades to the column's cards. */
-  delete(access: AccessContext, columnId: string): Promise<void> {
-    return this.prisma.$transaction(async (tx) => {
+  async delete(access: AccessContext, columnId: string): Promise<void> {
+    const deleted = await this.prisma.$transaction(async (tx) => {
       const current = await this.findScoped(tx, access, columnId);
       await tx.column.delete({ where: { id: current.id } });
       await this.activity.record(tx, {
@@ -124,6 +132,11 @@ export class ColumnsService {
         action: 'column.deleted',
         data: { name: current.name },
       });
+      return current;
+    });
+    this.events.publish(deleted.boardId, access, {
+      type: 'column.deleted',
+      payload: { columnId: deleted.id },
     });
   }
 

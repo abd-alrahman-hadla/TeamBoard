@@ -6,6 +6,8 @@ export interface AccessContext {
   userId: string;
   workspaceId: string;
   role: Role;
+  /** X-Client-Id of the calling tab (null if absent or malformed). */
+  clientId: string | null;
 }
 
 export interface AccessRequest extends AuthenticatedRequest {

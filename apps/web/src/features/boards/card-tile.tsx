@@ -1,19 +1,22 @@
 'use client';
 
-import type { Card, Member } from '@teamboard/shared';
-import { AlignLeftIcon } from 'lucide-react';
+import type { Card, Member, PresenceViewer } from '@teamboard/shared';
+import { AlignLeftIcon, PencilIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DueBadge, LabelChip, MemberAvatar } from './card-parts';
+import { editingLabel } from './realtime/presence-avatars';
 
 interface CardTileProps {
   card: Card;
   memberById: ReadonlyMap<string, Member>;
   now: Date;
+  /** Other people who have this card open right now. */
+  editors?: PresenceViewer[];
   className?: string;
 }
 
 /** The card face shown on the board (also used as the drag preview). */
-export function CardTile({ card, memberById, now, className }: CardTileProps) {
+export function CardTile({ card, memberById, now, editors = [], className }: CardTileProps) {
   const assignees = card.assigneeIds
     .map((id) => memberById.get(id))
     .filter((m): m is Member => m !== undefined);
@@ -28,6 +31,15 @@ export function CardTile({ card, memberById, now, className }: CardTileProps) {
         </div>
       )}
       <p className="text-sm leading-snug font-medium break-words">{card.title}</p>
+      {editors.length > 0 && (
+        <p
+          className="flex items-center gap-1 text-[11px] font-medium text-amber-700"
+          data-testid="card-editing"
+        >
+          <PencilIcon className="size-3" aria-hidden />
+          {editingLabel(editors)}
+        </p>
+      )}
       {hasMeta && (
         <div className="flex items-center gap-2">
           {card.dueDate && <DueBadge iso={card.dueDate} now={now} />}

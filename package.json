@@ -19,7 +19,8 @@
     "db:migrate": "pnpm --filter @teamboard/api db:migrate",
     "db:seed": "pnpm --filter @teamboard/api db:seed",
     "db:studio": "pnpm --filter @teamboard/api db:studio",
-    "db:reset": "pnpm --filter @teamboard/api db:reset"
+    "db:reset": "pnpm --filter @teamboard/api db:reset",
+    "realtime:scale-smoke": "pnpm --filter @teamboard/api realtime:scale-smoke"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

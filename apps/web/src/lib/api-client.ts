@@ -1,7 +1,8 @@
-import { apiErrorSchema } from '@teamboard/shared';
+import { apiErrorSchema, CLIENT_ID_HEADER } from '@teamboard/shared';
 import type { z } from 'zod';
 import { refreshSession } from './auth/refresh';
 import { tokenStore } from './auth/token-store';
+import { getClientId } from './client-id';
 import { env } from './env';
 
 export class ApiError extends Error {
@@ -34,7 +35,7 @@ async function toApiError(response: Response): Promise<ApiError> {
 }
 
 function send(path: string, options: RequestOptions, accessToken: string | undefined): Promise<Response> {
-  const headers = new Headers();
+  const headers = new Headers({ [CLIENT_ID_HEADER]: getClientId() });
   if (options.body !== undefined) headers.set('Content-Type', 'application/json');
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
   return fetch(`${env.NEXT_PUBLIC_API_URL}${path}`, {

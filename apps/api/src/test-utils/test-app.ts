@@ -13,21 +13,33 @@ export interface TestApp {
   prisma: PrismaService;
   env: Env;
   http: () => request.Agent;
+  /** Base URL when created with `listen: true` (for socket.io clients). */
+  url: string;
   close: () => Promise<void>;
 }
 
-export async function createTestApp(overrides: RawEnv = {}): Promise<TestApp> {
+export async function createTestApp(
+  overrides: RawEnv = {},
+  options: { listen?: boolean } = {},
+): Promise<TestApp> {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule.forRoot(testEnv(overrides))],
   }).compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>({ bufferLogs: true });
   const env = app.get<Env>(APP_CONFIG);
   assertTestDatabase(env.DATABASE_URL);
-  configureApp(app, env);
-  await app.init();
+  await configureApp(app, env);
+  let url = '';
+  if (options.listen) {
+    await app.listen(0, '127.0.0.1');
+    url = (await app.getUrl()).replace('[::1]', '127.0.0.1');
+  } else {
+    await app.init();
+  }
   return {
     app,
     env,
+    url,
     prisma: app.get(PrismaService),
     http: () => request.agent(app.getHttpServer()),
     close: () => app.close(),

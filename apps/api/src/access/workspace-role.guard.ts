@@ -1,6 +1,6 @@
 import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { type Action, can } from '@teamboard/shared';
+import { type Action, can, CLIENT_ID_HEADER, clientIdSchema } from '@teamboard/shared';
 import { forbidden, notFound } from '../common/errors';
 import { isId } from '../common/parse-id.pipe';
 import { type AccessRequest, REQUIRED_ACTION, SCOPED_PARAMS, type ScopedParam } from './access.types';
@@ -50,7 +50,12 @@ export class WorkspaceRoleGuard implements CanActivate {
     if (!role) throw notFound();
     if (!can(role, action)) throw forbidden();
 
-    request.access = { userId, workspaceId, role };
+    request.access = { userId, workspaceId, role, clientId: readClientId(request.headers[CLIENT_ID_HEADER]) };
     return true;
   }
+}
+
+/** The tab that sent the request (X-Client-Id), echoed in realtime events so it can skip its own changes. */
+export function readClientId(header: string | string[] | undefined): string | null {
+  return typeof header === 'string' && clientIdSchema.safeParse(header).success ? header : null;
 }

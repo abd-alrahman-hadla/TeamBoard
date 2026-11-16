@@ -32,6 +32,56 @@ services:
       timeout: 3s
       retries: 20
 
+  # ---------------------------------------------------------------------------
+  # `scale` profile: 2 API replicas behind nginx, sharing realtime state through Redis.
+  #   docker compose --profile scale up -d --build --wait
+  #   pnpm realtime:scale-smoke
+  #   docker compose --profile scale rm -sf api nginx migrate   (not `down`, which also stops postgres/redis)
+  # ---------------------------------------------------------------------------
+  migrate:
+    profiles: [scale]
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    image: teamboard-api:local
+    command: ['node', 'node_modules/prisma/build/index.js', 'migrate', 'deploy']
+    environment:
+      DATABASE_URL: postgresql://teamboard:teamboard@postgres:5432/teamboard
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    profiles: [scale]
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    image: teamboard-api:local
+    deploy:
+      replicas: 2
+    environment:
+      NODE_ENV: production
+      PORT: '4000'
+      LOG_LEVEL: info
+      DATABASE_URL: postgresql://teamboard:teamboard@postgres:5432/teamboard
+      REDIS_URL: redis://redis:6379
+      # INSTANCE_ID defaults to the container hostname, so each replica reports its own id.
+      WEB_ORIGIN: http://localhost:8080
+      # Local-only placeholder secret. Never reuse outside this profile.
+      JWT_ACCESS_SECRET: scale-profile-local-secret-not-for-production-use
+      COOKIE_SECURE: 'false'
+      TRUST_PROXY: 'true'
+      AUTH_RATE_LIMIT: '1000'
+      SWAGGER_ENABLED: 'false'
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
+  nginx:
+    profiles: [scale]
+    image: nginx:1.29-alpine
+    ports:
+      - '8080:80'
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      api: { condition: service_healthy }
+
 volumes:
   postgres-data:
   redis-data:

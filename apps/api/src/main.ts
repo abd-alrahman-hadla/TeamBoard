@@ -12,7 +12,7 @@ async function main(): Promise<void> {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(), { bufferLogs: true });
   const env = app.get<Env>(APP_CONFIG);
-  configureApp(app, env);
+  await configureApp(app, env);
   await app.listen(env.PORT);
 }
 

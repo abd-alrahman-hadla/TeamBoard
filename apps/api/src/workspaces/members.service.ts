@@ -12,6 +12,7 @@ import { ActivityService } from '../activity/activity.service';
 import { badRequest, conflict, forbidden, notFound } from '../common/errors';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { BoardEventsService } from '../realtime/board-events.service';
 import { toMemberDto } from './workspace.mappers';
 
 const MEMBER_INCLUDE = { user: { select: { id: true, name: true, email: true } } } as const;
@@ -31,6 +32,7 @@ export class MembersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
+    private readonly events: BoardEventsService,
   ) {}
 
   async list(access: AccessContext): Promise<Member[]> {
@@ -70,11 +72,11 @@ export class MembersService {
     });
   }
 
-  remove(access: AccessContext, userId: string): Promise<void> {
-    return this.prisma.$transaction(async (tx) => {
+  async remove(access: AccessContext, userId: string): Promise<void> {
+    const changedBoards = await this.prisma.$transaction(async (tx) => {
       const target = await this.findMembership(tx, access.workspaceId, userId);
       if (!canRemoveMember(access.role, target.role)) rankViolation(target.role);
-      await this.removeMembershipTx(tx, access.workspaceId, userId);
+      const boards = await this.removeMembershipTx(tx, access.workspaceId, userId);
       await this.activity.record(tx, {
         workspaceId: access.workspaceId,
         actorId: access.userId,
@@ -83,19 +85,41 @@ export class MembersService {
         action: 'member.removed',
         data: { role: target.role },
       });
+      return boards;
     });
+    await this.afterMembershipRemoved(access, userId, changedBoards);
   }
 
-  /** Deletes the membership and unassigns the user from every card in the workspace. */
-  async removeMembershipTx(tx: Prisma.TransactionClient, workspaceId: string, userId: string): Promise<void> {
+  /**
+   * Deletes the membership and unassigns the user from every card in the workspace.
+   * Returns the boards whose cards changed (they need a realtime resync).
+   */
+  async removeMembershipTx(
+    tx: Prisma.TransactionClient,
+    workspaceId: string,
+    userId: string,
+  ): Promise<string[]> {
     await tx.membership.delete({ where: { workspaceId_userId: { workspaceId, userId } } });
-    await tx.$executeRaw`
+    const rows = await tx.$queryRaw<{ board_id: string }[]>`
       UPDATE cards
       SET assignee_ids = array_remove(assignee_ids, ${userId}::uuid),
           version = version + 1,
           updated_at = now()
       WHERE ${userId}::uuid = ANY(assignee_ids)
-        AND board_id IN (SELECT id FROM boards WHERE workspace_id = ${workspaceId}::uuid)`;
+        AND board_id IN (SELECT id FROM boards WHERE workspace_id = ${workspaceId}::uuid)
+      RETURNING board_id`;
+    return [...new Set(rows.map((row) => row.board_id))];
+  }
+
+  /** After commit: the user's sockets leave the workspace's boards; boards with unassigned cards resync. */
+  async afterMembershipRemoved(
+    access: AccessContext,
+    userId: string,
+    changedBoards: string[],
+  ): Promise<void> {
+    // Revoke first, so the removed user is already out of the rooms when the resync goes out.
+    await this.events.revoke(access.workspaceId, userId);
+    this.events.resync(changedBoards, access);
   }
 
   /** Throws a 400 listing the ids that aren't members of the workspace. */

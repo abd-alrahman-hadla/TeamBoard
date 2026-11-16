@@ -5,6 +5,8 @@ export const TEST_DATABASE_URL =
 
 export const TEST_WEB_ORIGIN = 'http://localhost:3000';
 
+export const TEST_REDIS_URL = process.env['TEST_REDIS_URL'] ?? 'redis://localhost:6379';
+
 /** Integration tests must never touch the dev database. */
 export function assertTestDatabase(url: string): void {
   const name = new URL(url).pathname.slice(1);
@@ -27,6 +29,8 @@ export function testEnv(overrides: RawEnv = {}): RawEnv {
     COOKIE_DOMAIN: '',
     AUTH_RATE_LIMIT: '1000',
     SWAGGER_ENABLED: 'true',
+    REDIS_URL: TEST_REDIS_URL,
+    INSTANCE_ID: 'test',
     ...overrides,
   };
 }

@@ -13,6 +13,7 @@ import {
   withPositionRetry,
 } from '../ordering/placement';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { BoardEventsService } from '../realtime/board-events.service';
 import { MembersService } from '../workspaces/members.service';
 import { toCardDto } from './board.mappers';
@@ -45,15 +46,16 @@ export class CardsService {
     private readonly activity: ActivityService,
     private readonly members: MembersService,
     private readonly events: BoardEventsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(access: AccessContext, columnId: string, input: CreateCardInput): Promise<Card> {
     const placement = placementFrom(input.afterId);
-    const card = await withPositionRetry(() =>
+    const { card, deliveries } = await withPositionRetry(() =>
       this.prisma.$transaction(async (tx) => {
         const column = await tx.column.findFirst({
           where: { id: columnId, board: { workspaceId: access.workspaceId } },
-          select: { id: true, boardId: true, name: true },
+          select: { id: true, boardId: true, name: true, board: { select: { name: true } } },
         });
         if (!column) throw notFound();
         await lockColumnForPlacement(tx, column.id);
@@ -83,10 +85,24 @@ export class CardsService {
           action: 'card.created',
           data: { cardTitle: card.title, columnId: card.columnId, columnName: column.name },
         });
-        return toCardDto(card);
+        const deliveries = await this.notifications.assigned(
+          tx,
+          {
+            workspaceId: access.workspaceId,
+            boardId: card.boardId,
+            boardName: column.board.name,
+            cardId: card.id,
+            cardTitle: card.title,
+            actorId: access.userId,
+          },
+          [],
+          assigneeIds,
+        );
+        return { card: toCardDto(card), deliveries };
       }),
     );
     this.events.publish(card.boardId, access, { type: 'card.created', payload: { card } });
+    this.notifications.deliver(deliveries);
     return card;
   }
 
@@ -95,7 +111,7 @@ export class CardsService {
   }
 
   async update(access: AccessContext, cardId: string, input: UpdateCardInput): Promise<Card> {
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const { updated, deliveries } = await this.prisma.$transaction(async (tx) => {
       const current = await this.findScoped(tx, access, cardId);
       if (input.assigneeIds) await this.members.assertMembers(tx, access.workspaceId, input.assigneeIds);
       const card = await tx.card.update({
@@ -122,9 +138,25 @@ export class CardsService {
           ...(card.title !== current.title ? { previousTitle: current.title } : {}),
         },
       });
-      return toCardDto(card);
+      const deliveries = input.assigneeIds
+        ? await this.notifications.assigned(
+            tx,
+            {
+              workspaceId: access.workspaceId,
+              boardId: card.boardId,
+              boardName: current.board.name,
+              cardId: card.id,
+              cardTitle: card.title,
+              actorId: access.userId,
+            },
+            current.assigneeIds,
+            card.assigneeIds,
+          )
+        : [];
+      return { updated: toCardDto(card), deliveries };
     });
     this.events.publish(updated.boardId, access, { type: 'card.updated', payload: { card: updated } });
+    this.notifications.deliver(deliveries);
     return updated;
   }
 
@@ -197,7 +229,7 @@ export class CardsService {
   private async findScoped(tx: Prisma.TransactionClient, access: AccessContext, cardId: string) {
     const card = await tx.card.findFirst({
       where: { id: cardId, board: { workspaceId: access.workspaceId } },
-      include: { column: { select: { name: true } } },
+      include: { column: { select: { name: true } }, board: { select: { name: true } } },
     });
     if (!card) throw notFound();
     return card;

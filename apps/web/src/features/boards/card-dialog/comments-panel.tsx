@@ -1,12 +1,11 @@
 'use client';
 
-import { canDeleteComment, canEditComment, type Comment, type Role } from '@teamboard/shared';
+import { canDeleteComment, canEditComment, type Comment, type Member, type Role } from '@teamboard/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/features/auth/auth-context';
 import { errorMessage } from '@/lib/error-message';
 import { addComment, deleteComment, editComment, listComments } from '../board-api';
@@ -14,12 +13,15 @@ import { timeAgo } from '../due-date';
 import { queryKeys } from '../query-keys';
 import { TEMP_PREFIX } from '../use-board-mutations';
 import { Markdown } from './markdown';
+import { MentionTextarea } from './mention-textarea';
 
 interface CommentsPanelProps {
   cardId: string;
   role: Role | null;
   canComment: boolean;
   now: Date;
+  /** Workspace members, for `@` mentions. */
+  members: readonly Member[];
 }
 
 type Vars =
@@ -59,7 +61,7 @@ function send(cardId: string, vars: Vars): Promise<unknown> {
 }
 
 /** Comment thread with optimistic add/edit/delete. Comments are markdown too. */
-export function CommentsPanel({ cardId, role, canComment, now }: CommentsPanelProps) {
+export function CommentsPanel({ cardId, role, canComment, now, members }: CommentsPanelProps) {
   const queryClient = useQueryClient();
   const { state } = useAuth();
   const me = state.user;
@@ -106,13 +108,15 @@ export function CommentsPanel({ cardId, role, canComment, now }: CommentsPanelPr
     <div className="space-y-4">
       {canComment && (
         <form onSubmit={submit} className="space-y-2">
-          <Textarea
+          <MentionTextarea
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onValueChange={setDraft}
+            members={members}
+            meId={me?.id ?? null}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) submit(event);
             }}
-            placeholder="Write a comment… (Markdown supported)"
+            placeholder="Write a comment… (Markdown, @ to mention)"
             aria-label="Write a comment"
             className="min-h-20 text-sm"
             maxLength={5000}
@@ -147,10 +151,12 @@ export function CommentsPanel({ cardId, role, canComment, now }: CommentsPanelPr
               </div>
               {isEditing ? (
                 <div className="mt-1 space-y-2">
-                  <Textarea
+                  <MentionTextarea
                     autoFocus
                     value={editing.body}
-                    onChange={(event) => setEditing({ id: comment.id, body: event.target.value })}
+                    onValueChange={(body) => setEditing({ id: comment.id, body })}
+                    members={members}
+                    meId={me?.id ?? null}
                     onKeyDown={(event) => {
                       if (event.key === 'Escape') {
                         event.stopPropagation();

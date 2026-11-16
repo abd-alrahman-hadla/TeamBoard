@@ -1,5 +1,11 @@
 import { type BeforeApplicationShutdown, Injectable, Logger } from '@nestjs/common';
-import { type BoardEvent, boardRoom, SOCKET_EVENTS, userRoom } from '@teamboard/shared';
+import {
+  type BoardEvent,
+  boardRoom,
+  type ServerToClientEvents,
+  SOCKET_EVENTS,
+  userRoom,
+} from '@teamboard/shared';
 import type { AccessContext } from '../access/access.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { computePresence, type BoardServer } from './socket-data';
@@ -44,6 +50,15 @@ export class BoardEventsService implements BeforeApplicationShutdown {
       at: new Date().toISOString(),
     };
     this.server?.to(boardRoom(boardId)).emit(SOCKET_EVENTS.event, full);
+  }
+
+  /** Sends a personal event to every socket of one user, on any instance. */
+  toUser<E extends 'notification:new'>(
+    userId: string,
+    event: E,
+    ...args: Parameters<ServerToClientEvents[E]>
+  ): void {
+    this.server?.to(userRoom(userId)).emit(event, ...args);
   }
 
   /** Sends `board.resync` to boards whose data changed in bulk (e.g. assignee pruning). */

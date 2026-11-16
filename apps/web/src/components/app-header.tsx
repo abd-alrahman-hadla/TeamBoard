@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/features/auth/auth-context';
 import { HOME_PATH, LOGIN_PATH } from '@/features/auth/route-guard';
+import { NotificationBell } from '@/features/notifications/notification-bell';
 
 export function AppHeader() {
   const { state, logout } = useAuth();
@@ -29,6 +30,7 @@ export function AppHeader() {
           TeamBoard
         </Link>
         <div className="flex items-center gap-3">
+          <NotificationBell />
           <span className="text-muted-foreground text-sm" data-testid="current-user">
             {state.user?.name}
           </span>

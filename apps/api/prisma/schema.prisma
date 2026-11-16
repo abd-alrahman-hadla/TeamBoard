@@ -9,18 +9,20 @@ datasource db {
 }
 
 model User {
-  id              String         @id @default(uuid(7)) @db.Uuid
-  email           String         @unique
-  name            String
-  passwordHash    String         @map("password_hash")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
-  refreshTokens   RefreshToken[]
-  memberships     Membership[]
-  invitationsSent Invitation[]   @relation("InvitedBy")
-  cardsCreated    Card[]         @relation("CardCreatedBy")
-  comments        Comment[]
-  activities      Activity[]
+  id                String         @id @default(uuid(7)) @db.Uuid
+  email             String         @unique
+  name              String
+  passwordHash      String         @map("password_hash")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  refreshTokens     RefreshToken[]
+  memberships       Membership[]
+  invitationsSent   Invitation[]   @relation("InvitedBy")
+  cardsCreated      Card[]         @relation("CardCreatedBy")
+  comments          Comment[]
+  activities        Activity[]
+  notifications     Notification[] @relation("NotificationRecipient")
+  notificationsSent Notification[] @relation("NotificationActor")
 
   @@map("users")
 }
@@ -56,14 +58,15 @@ enum Role {
 }
 
 model Workspace {
-  id          String       @id @default(uuid(7)) @db.Uuid
-  name        String
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
-  memberships Membership[]
-  invitations Invitation[]
-  boards      Board[]
-  activities  Activity[]
+  id            String         @id @default(uuid(7)) @db.Uuid
+  name          String
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  memberships   Membership[]
+  invitations   Invitation[]
+  boards        Board[]
+  activities    Activity[]
+  notifications Notification[]
 
   @@map("workspaces")
 }
@@ -104,17 +107,18 @@ model Invitation {
 }
 
 model Board {
-  id          String     @id @default(uuid(7)) @db.Uuid
-  workspaceId String     @map("workspace_id") @db.Uuid
-  name        String
-  description String?
-  version     Int        @default(1)
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  columns     Column[]
-  cards       Card[]
-  activities  Activity[]
+  id            String         @id @default(uuid(7)) @db.Uuid
+  workspaceId   String         @map("workspace_id") @db.Uuid
+  name          String
+  description   String?
+  version       Int            @default(1)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  columns       Column[]
+  cards         Card[]
+  activities    Activity[]
+  notifications Notification[]
 
   @@index([workspaceId])
   @@map("boards")
@@ -139,25 +143,26 @@ model Column {
 /// `boardId` is denormalised from the column (cards only move within their board).
 /// `position` is a fractional-indexing key with COLLATE "C" (see the migration).
 model Card {
-  id          String    @id @default(uuid(7)) @db.Uuid
-  boardId     String    @map("board_id") @db.Uuid
-  columnId    String    @map("column_id") @db.Uuid
-  title       String
+  id            String         @id @default(uuid(7)) @db.Uuid
+  boardId       String         @map("board_id") @db.Uuid
+  columnId      String         @map("column_id") @db.Uuid
+  title         String
   /// Markdown source.
-  description String?
-  labels      String[]  @default([])
-  dueDate     DateTime? @map("due_date") @db.Timestamptz(3)
+  description   String?
+  labels        String[]       @default([])
+  dueDate       DateTime?      @map("due_date") @db.Timestamptz(3)
   /// Workspace members; pruned when a member is removed.
-  assigneeIds String[]  @default([]) @map("assignee_ids") @db.Uuid
-  position    String
-  version     Int       @default(1)
-  createdById String?   @map("created_by_id") @db.Uuid
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  board       Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  column      Column    @relation(fields: [columnId], references: [id], onDelete: Cascade)
-  createdBy   User?     @relation("CardCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  comments    Comment[]
+  assigneeIds   String[]       @default([]) @map("assignee_ids") @db.Uuid
+  position      String
+  version       Int            @default(1)
+  createdById   String?        @map("created_by_id") @db.Uuid
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  board         Board          @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  column        Column         @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  createdBy     User?          @relation("CardCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  comments      Comment[]
+  notifications Notification[]
 
   @@unique([columnId, position])
   @@index([boardId])
@@ -197,4 +202,38 @@ model Activity {
   @@index([workspaceId, id])
   @@index([boardId, id])
   @@map("activities")
+}
+
+enum NotificationType {
+  ASSIGNED
+  MENTIONED
+
+  @@map("notification_type")
+}
+
+/// In-app notification for one recipient. Created in the same transaction as the change that
+/// caused it, delivered live to the recipient's `user:<id>` socket room after commit.
+/// Deleting the board or card deletes its notifications.
+model Notification {
+  id          String           @id @default(uuid(7)) @db.Uuid
+  userId      String           @map("user_id") @db.Uuid
+  workspaceId String           @map("workspace_id") @db.Uuid
+  boardId     String?          @map("board_id") @db.Uuid
+  cardId      String?          @map("card_id") @db.Uuid
+  commentId   String?          @map("comment_id") @db.Uuid
+  actorId     String?          @map("actor_id") @db.Uuid
+  type        NotificationType
+  /// Snapshots for display: cardTitle, boardName, excerpt.
+  data        Json             @default("{}")
+  readAt      DateTime?        @map("read_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  user        User             @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor       User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  board       Board?           @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  card        Card?            @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([userId, id])
+  @@index([userId, readAt])
+  @@map("notifications")
 }

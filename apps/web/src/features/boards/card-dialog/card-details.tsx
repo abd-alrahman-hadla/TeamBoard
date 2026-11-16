@@ -76,6 +76,7 @@ export function CardDetails({
               role={permissions.role}
               canComment={permissions.canComment}
               now={now}
+              members={members}
             />
           </TabsContent>
           <TabsContent value="activity" className="pt-2">

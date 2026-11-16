@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { boardSchema, cardSchema, columnSchema, commentSchema } from './schemas/board';
+import type { Notification } from './notifications';
 import { idSchema, timestampSchema } from './schemas/common';
 
 /** Socket.io event names (the wire contract between apps/api and apps/web). */
@@ -20,6 +21,8 @@ export const SOCKET_EVENTS = {
   expired: 'auth:expired',
   /** server → client, on connect. */
   hello: 'hello',
+  /** server → client: a new notification for you (assigned / mentioned). */
+  notification: 'notification:new',
 } as const;
 
 /** Header the web app sends on every request so its own changes can be recognised in events. */
@@ -93,6 +96,7 @@ export interface ServerToClientEvents {
   'access:revoked': (payload: { workspaceId: string }) => void;
   'auth:expired': () => void;
   hello: (payload: HelloPayload) => void;
+  'notification:new': (notification: Notification) => void;
 }
 
 export interface ClientToServerEvents {

@@ -11,6 +11,7 @@ import { ActivityService } from '../activity/activity.service';
 import { forbidden, notFound } from '../common/errors';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { BoardEventsService } from '../realtime/board-events.service';
 import { toCommentDto } from './board.mappers';
 
@@ -22,6 +23,7 @@ export class CommentsService {
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
     private readonly events: BoardEventsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async list(access: AccessContext, cardId: string): Promise<Comment[]> {
@@ -35,7 +37,7 @@ export class CommentsService {
   }
 
   async create(access: AccessContext, cardId: string, input: CreateCommentInput): Promise<Comment> {
-    const { comment, boardId } = await this.prisma.$transaction(async (tx) => {
+    const { comment, boardId, deliveries } = await this.prisma.$transaction(async (tx) => {
       const card = await this.findCard(tx, access, cardId);
       const comment = await tx.comment.create({
         data: { cardId: card.id, authorId: access.userId, body: input.body },
@@ -50,15 +52,29 @@ export class CommentsService {
         action: 'comment.created',
         data: { cardId: card.id, cardTitle: card.title },
       });
-      return { comment: toCommentDto(comment), boardId: card.boardId };
+      const deliveries = await this.notifications.mentioned(
+        tx,
+        {
+          workspaceId: access.workspaceId,
+          boardId: card.boardId,
+          boardName: card.board.name,
+          cardId: card.id,
+          cardTitle: card.title,
+          actorId: access.userId,
+        },
+        { id: comment.id, body: comment.body },
+        null,
+      );
+      return { comment: toCommentDto(comment), boardId: card.boardId, deliveries };
     });
     this.events.publish(boardId, access, { type: 'comment.created', payload: { comment } });
+    this.notifications.deliver(deliveries);
     return comment;
   }
 
   /** Only the author edits. */
   async update(access: AccessContext, commentId: string, input: UpdateCommentInput): Promise<Comment> {
-    const { comment, boardId } = await this.prisma.$transaction(async (tx) => {
+    const { comment, boardId, deliveries } = await this.prisma.$transaction(async (tx) => {
       const current = await this.findScoped(tx, access, commentId);
       if (!canEditComment(access.userId, current.authorId))
         throw forbidden('Only the author can edit a comment');
@@ -76,9 +92,23 @@ export class CommentsService {
         action: 'comment.updated',
         data: { cardId: comment.cardId, cardTitle: current.card.title },
       });
-      return { comment: toCommentDto(comment), boardId: current.card.boardId };
+      const deliveries = await this.notifications.mentioned(
+        tx,
+        {
+          workspaceId: access.workspaceId,
+          boardId: current.card.boardId,
+          boardName: current.card.board.name,
+          cardId: current.cardId,
+          cardTitle: current.card.title,
+          actorId: access.userId,
+        },
+        { id: comment.id, body: comment.body },
+        current.body,
+      );
+      return { comment: toCommentDto(comment), boardId: current.card.boardId, deliveries };
     });
     this.events.publish(boardId, access, { type: 'comment.updated', payload: { comment } });
+    this.notifications.deliver(deliveries);
     return comment;
   }
 
@@ -110,7 +140,7 @@ export class CommentsService {
   private async findCard(tx: Prisma.TransactionClient, access: AccessContext, cardId: string) {
     const card = await tx.card.findFirst({
       where: { id: cardId, board: { workspaceId: access.workspaceId } },
-      select: { id: true, boardId: true, title: true },
+      select: { id: true, boardId: true, title: true, board: { select: { name: true } } },
     });
     if (!card) throw notFound();
     return card;
@@ -119,7 +149,7 @@ export class CommentsService {
   private async findScoped(tx: Prisma.TransactionClient, access: AccessContext, commentId: string) {
     const comment = await tx.comment.findFirst({
       where: { id: commentId, card: { board: { workspaceId: access.workspaceId } } },
-      include: { card: { select: { boardId: true, title: true } } },
+      include: { card: { select: { boardId: true, title: true, board: { select: { name: true } } } } },
     });
     if (!comment) throw notFound();
     return comment;

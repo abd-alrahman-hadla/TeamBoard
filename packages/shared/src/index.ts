@@ -137,3 +137,19 @@ export {
   type ServerToClientEvents,
 } from './realtime';
 export { activityCardId, describeActivity, type ActivityLookup, type ActivityScope } from './activity';
+export {
+  NOTIFICATION_TYPES,
+  describeNotification,
+  mentionToken,
+  mentionsToLinks,
+  notificationPageSchema,
+  notificationQuerySchema,
+  notificationSchema,
+  parseMentions,
+  stripMentions,
+  unreadCountSchema,
+  type Notification,
+  type NotificationPage,
+  type NotificationQuery,
+  type NotificationType,
+} from './notifications';

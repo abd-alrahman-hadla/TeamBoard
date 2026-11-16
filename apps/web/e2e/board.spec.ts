@@ -145,7 +145,7 @@ test.describe('board', () => {
     await page.keyboard.press('Escape');
     await expect(dialog.getByRole('list', { name: 'Assignees' })).toContainText(world.member.name);
 
-    await dialog.getByRole('textbox', { name: 'Write a comment' }).fill('Ready for **review**');
+    await dialog.getByRole('combobox', { name: 'Write a comment' }).fill('Ready for **review**');
     await dialog.getByRole('button', { name: 'Comment', exact: true }).click();
     await expect(dialog.getByTestId('comment').filter({ hasText: 'Ready for review' })).toBeVisible();
 

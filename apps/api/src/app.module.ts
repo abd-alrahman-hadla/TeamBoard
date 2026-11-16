@@ -12,6 +12,7 @@ import { HealthModule } from './health/health.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { loggerOptions } from './logging/logger.options';
 import { MailModule } from './mail/mail.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
@@ -44,6 +45,7 @@ export class AppModule {
         AccessModule,
         ActivityModule,
         RealtimeModule,
+        NotificationsModule,
         HealthModule,
         WorkspacesModule,
         InvitationsModule,

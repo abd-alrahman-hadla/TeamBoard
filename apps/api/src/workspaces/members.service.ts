@@ -100,6 +100,8 @@ export class MembersService {
     userId: string,
   ): Promise<string[]> {
     await tx.membership.delete({ where: { workspaceId_userId: { workspaceId, userId } } });
+    // Their notifications point into a workspace they can no longer open.
+    await tx.notification.deleteMany({ where: { workspaceId, userId } });
     const rows = await tx.$queryRaw<{ board_id: string }[]>`
       UPDATE cards
       SET assignee_ids = array_remove(assignee_ids, ${userId}::uuid),

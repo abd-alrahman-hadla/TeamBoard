@@ -1,6 +1,7 @@
 'use client';
 
-import ReactMarkdown, { type Components } from 'react-markdown';
+import { mentionsToLinks } from '@teamboard/shared';
+import ReactMarkdown, { type Components, defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 
@@ -20,14 +21,22 @@ const COMPONENTS: Components = {
   ),
   ol: ({ node: _node, ...props }) => <ol className="my-1.5 list-decimal pl-5" {...props} />,
   li: ({ node: _node, ...props }) => <li className="my-0.5 [&>input]:mr-1.5" {...props} />,
-  a: ({ node: _node, ...props }) => (
-    <a
-      className="text-primary underline underline-offset-2"
-      target="_blank"
-      rel="noopener noreferrer"
-      {...props}
-    />
-  ),
+  a: ({ node: _node, href, children, ...props }) =>
+    href?.startsWith('mention:') ? (
+      <span className="bg-primary/10 text-primary rounded px-1 font-medium" data-testid="mention">
+        {children}
+      </span>
+    ) : (
+      <a
+        href={href}
+        className="text-primary underline underline-offset-2"
+        target="_blank"
+        rel="noopener noreferrer"
+        {...props}
+      >
+        {children}
+      </a>
+    ),
   code: ({ node: _node, ...props }) => (
     <code className="bg-muted rounded px-1 py-0.5 font-mono text-[0.85em]" {...props} />
   ),
@@ -50,15 +59,21 @@ const COMPONENTS: Components = {
   hr: () => <hr className="my-3" />,
 };
 
+/** Keeps the default safe-URL filter, plus our own `mention:` links (rendered as chips, never as links). */
+function urlTransform(url: string): string {
+  return /^mention:[0-9a-f-]{36}$/i.test(url) ? url : defaultUrlTransform(url);
+}
+
 /**
  * Renders card markdown (GitHub flavoured). react-markdown never renders raw HTML, so user
  * content can't inject markup or scripts; links open in a new tab without an opener.
+ * Mention tokens `@[Name](id)` render as chips.
  */
 export function Markdown({ source, className }: { source: string; className?: string }) {
   return (
     <div className={cn('text-sm break-words', className)} data-testid="markdown">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={COMPONENTS}>
-        {source}
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={COMPONENTS} urlTransform={urlTransform}>
+        {mentionsToLinks(source)}
       </ReactMarkdown>
     </div>
   );

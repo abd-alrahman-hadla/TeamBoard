@@ -97,7 +97,7 @@ describe('CardDetails (editor)', () => {
 
   it('shows the comment composer and the delete button', () => {
     setup();
-    expect(screen.getByRole('textbox', { name: 'Write a comment' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Write a comment' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Delete card' })).toBeInTheDocument();
   });
 });

@@ -1,5 +1,6 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { addMissingPathParams } from './common/swagger-path-params';
 import { AUTH_COOKIES } from '@teamboard/shared';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
@@ -21,7 +22,7 @@ function setupSwagger(app: NestExpressApplication): void {
     .addBearerAuth()
     .addCookieAuth(AUTH_COOKIES.refreshToken)
     .build();
-  const document = SwaggerModule.createDocument(app, config);
+  const document = addMissingPathParams(SwaggerModule.createDocument(app, config));
   SwaggerModule.setup(DOCS_PATH, app, document, { jsonDocumentUrl: `${DOCS_PATH}-json` });
 }
 

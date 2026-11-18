@@ -158,7 +158,7 @@ Deploying publicly (Vercel + Render + Neon + Upstash, with a one-click demo for 
 | Command         | What runs                                                                                                        |
 | --------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `pnpm check`    | lint, typecheck, and unit tests (Jest for the API, Vitest for web and shared)                                    |
-| `pnpm test:int` | ~300 API integration tests with supertest and real sockets, against Postgres + Redis                             |
+| `pnpm test:int` | 295 API integration tests with supertest and real sockets, against Postgres + Redis                             |
 | `pnpm e2e`      | Playwright: auth flows, drag and drop (pointer + keyboard), and two-browser realtime, presence and notifications |
 | `pnpm docs:gif` | re-records `docs/live-demo.gif` from a scripted two-browser session                                              |
 

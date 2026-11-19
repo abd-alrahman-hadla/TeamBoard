@@ -36,6 +36,9 @@ Everything below runs in this order. Expect about 30 minutes the first time.
 
 1. Create a Redis database (regional, same region as Render). Turn **TLS on**.
 2. Copy the `rediss://default:<password>@<host>:6379` URL: the API's `REDIS_URL`.
+   - Use **`rediss://`** with two s's (TLS). Upstash refuses plain `redis://`.
+   - Don't use the **REST URL** (`https://….upstash.io`) or the REST token; those are for Upstash's HTTP API.
+   - The API refuses a non-`redis(s)://` URL at startup. If it can't reach Redis within 15 s, it exits and logs `Could not connect to Redis at <host>…` in the Render logs.
 
 > The Socket.io Redis adapter uses pub/sub, and presence uses `fetchSockets()` (a request/response over pub/sub with `PUBSUB NUMSUB`). Upstash supports these on regular Redis databases. Verify presence after the first deploy (step 6). If it's flaky, the API still works with `REDIS_URL` unset on a single instance (the adapter falls back to in-memory with a warning).
 

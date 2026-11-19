@@ -97,6 +97,9 @@ export class BoardEventsService implements BeforeApplicationShutdown {
         boardId,
         sockets.map((s) => s.data),
       );
+      // Shutdown may have started while we waited. The Redis clients are closing then, and emit()
+      // doesn't hand back the publish promise, so the rejection would escape this try/catch.
+      if (this.closing) return;
       this.server.to(boardRoom(boardId)).emit(SOCKET_EVENTS.presence, presence);
     } catch (error) {
       // fetchSockets times out if another instance doesn't answer; presence catches up on the next change.

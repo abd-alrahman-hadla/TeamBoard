@@ -60,6 +60,11 @@ export default defineConfig({
         NEXT_PUBLIC_E2E: '1',
         NEXT_DIST_DIR: '.next-e2e',
         NEXT_TELEMETRY_DISABLED: '1',
+        // Pinned so a developer's apps/web/.env(.local) can't change the e2e build: process env
+        // wins over .env files in Next.js, and empty values mean "unset" (lib/env.ts).
+        NEXT_PUBLIC_DEMO_MODE: 'false',
+        NEXT_PUBLIC_SOCKET_URL: '',
+        API_ORIGIN: '',
       },
     },
   ],

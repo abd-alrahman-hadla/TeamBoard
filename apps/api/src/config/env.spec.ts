@@ -36,6 +36,16 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ ...valid, TRUST_PROXY: 'lots' })).toThrow(/TRUST_PROXY/);
   });
 
+  it('accepts only redis:// or rediss:// for REDIS_URL', () => {
+    expect(parseEnv({ ...valid, REDIS_URL: 'rediss://default:pw@eu1.upstash.io:6379' }).REDIS_URL).toBe(
+      'rediss://default:pw@eu1.upstash.io:6379',
+    );
+    expect(parseEnv({ ...valid, REDIS_URL: 'redis://localhost:6379' }).REDIS_URL).toBe(
+      'redis://localhost:6379',
+    );
+    expect(() => parseEnv({ ...valid, REDIS_URL: 'https://eu1.upstash.io' })).toThrow(/rediss:\/\//);
+  });
+
   it('validates REFRESH_COOKIE_PATH', () => {
     expect(parseEnv(valid).REFRESH_COOKIE_PATH).toBe('/auth');
     expect(parseEnv({ ...valid, REFRESH_COOKIE_PATH: '/api/auth' }).REFRESH_COOKIE_PATH).toBe('/api/auth');

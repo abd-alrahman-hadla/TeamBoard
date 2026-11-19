@@ -25,7 +25,13 @@ export const envSchema = z.object({
   AUTH_RATE_LIMIT: z.coerce.number().int().positive().default(10),
   INVITATION_TTL_HOURS: z.coerce.number().int().positive().default(48),
   /** Socket.io Redis adapter (needed for 2+ instances). Unset = single-instance in-memory adapter. */
-  REDIS_URL: z.url().optional(),
+  REDIS_URL: z
+    .url({
+      protocol: /^rediss?$/,
+      error:
+        'REDIS_URL must be a redis:// or rediss:// URL (Upstash: the TLS Redis URL, not the https:// REST URL)',
+    })
+    .optional(),
   /** Reported to clients (hello event, X-Instance-Id header) so multi-instance setups are observable. */
   INSTANCE_ID: z.string().min(1).default(hostname()),
   /**

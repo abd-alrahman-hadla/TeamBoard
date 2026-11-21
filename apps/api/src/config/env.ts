@@ -43,6 +43,8 @@ export const envSchema = z.object({
     .default(false)
     .transform((value) => (typeof value === 'number' ? value : value ? 1 : 0)),
   SWAGGER_ENABLED: z.stringbool().default(true),
+  /** Public demo: enables POST /demo/reset (the in-app "Reset demo" button) for demo members. */
+  DEMO_MODE: z.stringbool().default(false),
 });
 
 export type Env = z.infer<typeof envSchema>;

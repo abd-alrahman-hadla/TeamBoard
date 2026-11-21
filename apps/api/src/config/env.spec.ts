@@ -17,6 +17,7 @@ describe('parseEnv', () => {
       COOKIE_SECURE: false,
       AUTH_RATE_LIMIT: 10,
       SWAGGER_ENABLED: true,
+      DEMO_MODE: false,
     });
     expect(env.COOKIE_DOMAIN).toBeUndefined();
   });

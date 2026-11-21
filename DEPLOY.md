@@ -96,6 +96,12 @@ Then **Actions → Reset public demo → Run workflow** once. It creates:
 
 It runs again every night at 03:00 UTC.
 
+Visitors can also reset it themselves: with `DEMO_MODE=true` on the API, the demo board shows a **Reset demo** button.
+
+- It restores the board for everyone viewing it (open boards refresh live), and nobody gets signed out.
+- It can be used at most once a minute.
+- `render.yaml` sets `DEMO_MODE=true`. On a service created before it was added, set it by hand: Render → Environment → `DEMO_MODE` = `true`, then redeploy.
+
 Without these secrets the deploy and reset workflows just print a notice and succeed, so forks stay green.
 
 `ci.yml` pushes images to GHCR on `main` (`ghcr.io/<owner>/<repo>-api`, `-api-migrator`, `-web`). Render builds from the Dockerfile itself, so the GHCR images are for anyone running `docker-compose.prod.yml`-style setups elsewhere.

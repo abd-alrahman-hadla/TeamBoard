@@ -17,7 +17,9 @@ import type { ColumnOrder } from './dnd/dnd-logic';
 import { filterCards } from './filters/filter-cards';
 import { FilterToolbar } from './filters/filter-toolbar';
 import { useBoardFilters } from './filters/use-board-filters';
+import { env } from '@/lib/env';
 import { BoardActivitySheet } from './activity/board-activity-sheet';
+import { ResetDemoButton, showResetDemo } from './demo/reset-demo-button';
 import { PresenceAvatars } from './realtime/presence-avatars';
 import { useBoardRealtime } from './realtime/use-board-realtime';
 import { useBoardContext, useBoardQuery } from './use-board';
@@ -144,6 +146,7 @@ export function BoardView({ boardId }: { boardId: string }) {
               </Badge>
             )}
             <div className="ml-auto flex items-center gap-3">
+              {showResetDemo(boardId, env.NEXT_PUBLIC_DEMO_MODE) && <ResetDemoButton onReset={closeCard} />}
               <BoardActivitySheet />
               <PresenceAvatars
                 viewers={realtime.presence?.viewers ?? []}

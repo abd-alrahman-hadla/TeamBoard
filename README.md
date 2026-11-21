@@ -13,6 +13,7 @@ _Sara (left) and Omar (right) in two separate browsers. Recorded by a script (`p
 - **Optimistic UI:** changes apply instantly. A rejected change rolls back only what it touched, so it never undoes someone else's newer move.
 - **Workspaces and roles:** owner, admin, member and viewer, enforced on every route and socket join (see the [RBAC matrix](#roles-and-permissions)). Invite links expire after 48 hours.
 - **Activity log:** per board and per card, in sentences ("Sara moved 'Login page' from To do to In progress"). It stays readable after renames and deletes.
+- **Public demo with one-click reset:** sign in as Sara or Omar from the login page. A **Reset demo** button restores the board for everyone (at most once a minute), and a nightly job resets it too.
 - **Notifications:** you're notified when someone assigns you or `@mentions` you, with a bell, an unread count, and live delivery over the socket.
 - **Card details:** Markdown descriptions and comments, labels, assignees, due dates, and URL-based filters.
 - **Production-ready setup:**

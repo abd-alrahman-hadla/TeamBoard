@@ -44,3 +44,6 @@ services:
         value: '30'
       - key: SWAGGER_ENABLED
         value: 'false'
+      # Public demo: enables the in-app "Reset demo" button (POST /demo/reset) for demo members.
+      - key: DEMO_MODE
+        value: 'true'

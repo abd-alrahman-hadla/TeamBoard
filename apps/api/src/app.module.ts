@@ -3,6 +3,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { AccessModule } from './access/access.module';
 import { ActivityModule } from './activity/activity.module';
+import { DemoModule } from './demo/demo.module';
 import { AuthModule } from './auth/auth.module';
 import { THROTTLE } from './auth/throttle';
 import { APP_CONFIG, type Env, type RawEnv } from './config/env';
@@ -46,6 +47,7 @@ export class AppModule {
         ActivityModule,
         RealtimeModule,
         NotificationsModule,
+        DemoModule,
         HealthModule,
         WorkspacesModule,
         InvitationsModule,
